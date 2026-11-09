@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch Budget Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--ink:#14304a;--gold:#f0b04a;--green:#23805a;--red:#bb4637;--line:#dbe3ea;--mut:#60758a}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html{background:#1c1440}
+body{margin:0;min-height:100vh;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1b2b3a;font-size:14px;background:radial-gradient(circle at 85% 8%,rgba(240,176,74,.28),transparent 38%),linear-gradient(155deg,#2b1856 0%,#103f57 52%,#14675f 100%) fixed}
+.top{background:rgba(10,8,34,.45);color:#fff;padding:16px 28px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;border-bottom:3px solid var(--gold)}
+.top h1{margin:0;font-size:23px;font-weight:800}.top p{margin:2px 0 0;font-size:12px;opacity:.75}
+.nav button{background:rgba(255,255,255,.14);color:#fff;border:0;padding:9px 18px;border-radius:8px;font:600 13px inherit;font-family:inherit;cursor:pointer;margin-left:6px}
+.nav button.on{background:var(--gold);color:#14304a}.nav button:disabled{opacity:.4;cursor:not-allowed}
+.wrap{max-width:1200px;margin:20px auto;padding:0 14px}
+.page{display:none}.page.on{display:block}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.imp{background:#fff;border-radius:14px;padding:18px;border-top:5px solid var(--c)}
+.imp h2{margin:0 0 4px;font-size:18px;color:var(--ink)}.imp .cols{font-size:12px;color:var(--mut);margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:stretch}
+.drop{flex:1;border:2px dashed var(--line);border-radius:10px;padding:14px;text-align:center;cursor:pointer;color:var(--mut);font-weight:600}
+.drop:hover{border-color:var(--c);color:var(--c)}.drop input{display:none}
+.st{margin-top:10px;font-size:13px;min-height:20px}.fl{font-size:11px;color:var(--mut);margin-top:3px;word-break:break-all}
+.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:600;font-size:12px;margin-top:3px}.mut{color:var(--mut)}
+.chk{display:flex;gap:8px;align-items:center;margin-top:10px;font-weight:600}
+.rad{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-weight:600;font-size:13px}.rad label{display:flex;gap:4px;align-items:center}
+.act{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap}
+.btn{background:var(--ink);color:#fff;border:0;padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer}
+.btn.g{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.r{background:var(--red)}.btn.sm{padding:8px 12px;font-size:12px;background:#fff;color:var(--red);border:1px solid var(--red)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.filter{background:rgba(255,255,255,.95);border-radius:12px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:16px}
+.fbar{display:flex;flex-wrap:wrap;gap:14px}.fg span{display:block;font-size:11px;font-weight:700;color:var(--mut);margin-bottom:3px}
+.filter .sp{flex:1}
+.ms{position:relative}
+.msb{padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;font:600 13px inherit;font-family:inherit;cursor:pointer;min-width:170px;max-width:230px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msp{display:none;position:absolute;top:100%;left:0;z-index:30;background:#fff;border:1px solid #b9c6d2;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.3);width:260px;padding:8px;margin-top:4px}
+.ms.open .msp{display:block}
+.msp input[type=text]{width:100%;padding:7px;border:1px solid var(--line);border-radius:6px;font-family:inherit}
+.msl{max-height:220px;overflow:auto;border:1px solid var(--line);margin-top:6px}
+.msl label,.msa{display:flex;gap:8px;padding:5px 8px;cursor:pointer;align-items:center;font-size:13px}.msa{margin-top:4px;border-bottom:1px solid var(--line)}
+.title{text-align:center;margin:4px 0 16px;color:#fff}
+.title h2{margin:0;font-size:28px;font-weight:800;letter-spacing:.3px}.title span{opacity:.8;font-weight:600;font-size:13px}
+.sec{background:#fff;border-radius:14px;margin-bottom:16px;overflow:hidden}
+.sec>h3{margin:0;padding:11px 18px;color:#fff;font-size:16px;background:var(--c);display:flex;justify-content:space-between;align-items:center}
+.sec>h3 small{font-weight:600;opacity:.85;font-size:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}.two .sec{margin-bottom:0}
+@media(max-width:800px){.two{grid-template-columns:1fr}}
+.sc{overflow-x:auto}table{border-collapse:collapse;width:100%}
+th,td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-size:13px}
+th{background:#f1f4f9;color:var(--ink)}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:nth-child(even){background:#fafbfc}
+tfoot td{background:#fdf0d4;font-weight:800;border-top:2px solid var(--gold)}
+.z{color:#b4c0cb}.empty{padding:20px;text-align:center;color:var(--mut)}.note{font-size:12px;color:var(--mut);padding:6px 16px 10px}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px}
+.k{background:#fff;border-radius:14px;padding:14px 18px;border-left:6px solid var(--c)}
+.k div{font-size:12px;color:var(--mut);font-weight:700}.k b{display:block;font-size:22px;margin-top:4px;color:var(--c)}
+.res{margin-top:14px;border-radius:14px;padding:14px 20px;color:#fff;font-weight:800;font-size:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.pr .wrap{max-width:1100px;width:1100px;margin:0}
+@page{size:A4 portrait;margin:6mm}
+@media print{.top,.filter,.fitbtn{display:none!important}.wrap{margin:0}body{background-attachment:scroll}}
+</style>
+</head>
+<body>
+<div id="authGate" style="position:fixed;inset:0;z-index:200;background:linear-gradient(135deg,#21164a,#0a6658);display:flex;align-items:center;justify-content:center;padding:20px">
+  <form id="loginForm" style="background:white;border-radius:18px;padding:28px;width:min(420px,100%);box-shadow:0 20px 65px #0004">
+    <h2 style="margin:0 0 8px;color:#14304a">🏛️ Branch Budget Report</h2><p style="color:#60758a;margin:0 0 18px">Authorized user login</p>
+    <label>Email<input id="loginEmail" type="email" autocomplete="username" required style="display:block;width:100%;padding:12px;margin:6px 0 14px;border:1px solid #cbd5df;border-radius:8px"></label>
+    <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required style="display:block;width:100%;padding:12px;margin:6px 0 16px;border:1px solid #cbd5df;border-radius:8px"></label>
+    <button type="submit" class="btn" style="width:100%">Login</button><p id="authError" style="color:#bb4637;min-height:18px;font-size:12px"></p>
+  </form>
+  <div id="authLoading" style="display:none;background:white;padding:24px;border-radius:12px">Checking access…</div>
+</div>
+<div id="appRoot" style="display:none">
+<div class="top">
+  <div><h1>🏛️ Branch Budget Report</h1><p>Donation • Expenses • Fund Position</p></div>
+  <div class="nav"><span id="whoami" style="font-size:12px;margin-right:10px"></span><button id="n1" class="on" onclick="go(1)">1 · Import</button><button id="n2" onclick="go(2)" disabled>2 · Dashboard</button><button id="membersBtn" style="display:none" onclick="showMembers()">Members</button><button onclick="window.cloudLogout()">Logout</button></div>
+</div>
+<div class="wrap">
+<div id="p1" class="page on">
+  <div class="title"><h2>Data Import &amp; Selection</h2><span>Ek ya ek se zyada Excel / CSV chuniye • data apne aap save rehta hai</span></div>
+  <div class="grid3">
+    <div class="imp" style="--c:#23805a"><h2>💰 Donation</h2><div class="cols">Branch, Deposit Status, User, Mode, Amount</div>
+      <div class="row"><label class="drop">📂 File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('don',this)"></label><button class="btn sm" onclick="clr('don')">🗑️ Clear</button></div>
+      <div class="st" id="s_don"></div><label class="chk"><input type="checkbox" id="u_don" checked onchange="U.don=this.checked;save()"> Dashboard me dikhao</label></div>
+    <div class="imp" style="--c:#bb4637"><h2>🧾 Expenses</h2><div class="cols">Against, Branch, Amount (Account column ho to optional)</div>
+      <div class="row"><label class="drop">📂 File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('exp',this)"></label><button class="btn sm" onclick="clr('exp')">🗑️ Clear</button></div>
+      <div class="st" id="s_exp"></div>
+      <div class="rad"><label><input type="radio" name="acc" value="all" checked onchange="ACC=this.value;save()"> Bank + Cash</label><label><input type="radio" name="acc" value="bank" onchange="ACC=this.value;save()"> Sirf Bank</label><label><input type="radio" name="acc" value="cash" onchange="ACC=this.value;save()"> Sirf Cash Account</label></div>
+      <label class="chk"><input type="checkbox" id="u_exp" checked onchange="U.exp=this.checked;save()"> Dashboard me dikhao</label></div>
+    <div class="imp" style="--c:#1f6fa8"><h2>🏦 Fund Position Balance</h2><div class="cols">Bank Account, Purpose, Fund Category, Balance</div>
+      <div class="row"><label class="drop">📂 File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('fund',this)"></label><button class="btn sm" onclick="clr('fund')">🗑️ Clear</button></div>
+      <div class="st" id="s_fund"></div><label class="chk"><input type="checkbox" id="u_fund" checked onchange="U.fund=this.checked;save()"> Dashboard me dikhao</label></div>
+  </div>
+  <div class="act"><button class="btn" id="go" onclick="go(2)" disabled>Dashboard dekhiye →</button><button class="btn g" onclick="demo()" id="demoBtn" style="display:none">Demo data</button><button class="btn r" onclick="clrAll()">🗑️ All Clear</button></div>
+</div>
+
+<div id="p2" class="page">
+  <div class="filter">
+    <div class="fbar" id="fbar"></div><span class="sp"></span>
+    <button class="btn g fitbtn" id="fitb" onclick="toggleFit()">📱 Fit 1 Page</button>
+    <button class="btn g" onclick="window.print()">🖨️ PDF (1 Page)</button>
+    <button class="btn g" onclick="go(1)">← Import</button>
+  </div>
+  <div id="cap"><div class="title"><h2>Branch Budget Report</h2><span id="sub"></span></div><div id="out"></div></div>
+</div>
+</div>
+<div id="membersPanel" style="display:none;position:fixed;inset:0;background:#111b;z-index:100;padding:5vh 4vw;overflow:auto">
+ <div style="background:white;border-radius:14px;max-width:850px;margin:auto;padding:25px">
+  <button class="btn g" style="float:right" onclick="document.getElementById('membersPanel').style.display='none'">Close</button>
+  <h2>Super Admin · Member Profiles</h2>
+  <p>Firebase Authentication → Users mein pehle member login account banaiye. Phir uska UID neeche daal kar Firestore profile add/update kar sakte hain. Actual Auth account create/delete karne ke liye secure backend alag chahiye.</p>
+  <form id="memberForm" style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0">
+   <input id="memberUID" required placeholder="Firebase Auth UID" style="flex:2;padding:10px;min-width:190px">
+   <input id="memberEmail" required type="email" placeholder="Email" style="flex:2;padding:10px;min-width:190px">
+   <select id="memberRole" style="padding:10px"><option value="viewer">Viewer</option><option value="admin">Admin</option><option value="editor">Editor</option></select>
+   <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="memberActive" checked> Active</label>
+   <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="memberManage"> Manage data</label>
+   <button class="btn" type="submit">Save Profile</button>
+  </form>
+  <div id="memberError" style="color:#bb4637"></div><div id="memberList"></div>
+ </div>
+</div>
+</div>
+<script>
+let D={don:[],exp:[],fund:[]},U={don:true,exp:true,fund:true},ACC='all',PG=1,FIT=false;
+const ERR={don:[],exp:[],fund:[]},F={};
+const FK=[['branch','Branch'],['status','Deposit Status'],['user','User'],['ledger','Ledger']];
+FK.forEach(([k])=>F[k]={all:true,sel:[]});
+const SPEC={
+ don:{branch:['branch'],status:['depositstatus','status'],user:['user','username'],mode:['mode','paymentmode'],amount:['amount']},
+ exp:{against:['against','ledger'],branch:['branch'],amount:['amount'],acct:['account','bankaccount','bank','cashbank','bankcash','paidfrom','paymentaccount']},
+ fund:{bank:['bankaccount','bank'],purpose:['purpose'],cat:['fundcategory','fund','category'],balance:['balance'],branch:['branch']}};
+const REQ={don:['branch','user','mode','amount'],exp:['against','amount'],fund:['bank','balance']};
+const $=s=>document.getElementById(s);
+const norm=s=>String(s).toLowerCase().replace(/[^a-z0-9]/g,'');
+const N=v=>{const x=parseFloat(String(v).replace(/[₹,\s]/g,''));return isNaN(x)?0:x};
+const fmt=n=>'₹ '+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const T=v=>{v=String(v==null?'':v).trim();return v||'—'};
+const uniq=a=>[...new Set(a)].sort();
+const sum=(a,k)=>a.reduce((t,r)=>t+r[k],0);
+
+/* ---------- browser-only view preferences; cloud is source of truth ---------- */
+function save(){try{localStorage.setItem('bbr_view_v3',JSON.stringify({U,ACC,F,PG}))}catch(e){}}
+function restore(){
+ try{const v=JSON.parse(localStorage.getItem('bbr_view_v3')||'null');if(v){U=v.U||U;ACC=v.ACC||ACC;PG=v.PG||1;for(const k in (v.F||{}))if(F[k])F[k]=v.F[k]}}catch(e){}
+ ['don','exp','fund'].forEach(k=>{$('u_'+k).checked=U[k];stat(k)});
+ document.querySelector(`input[name=acc][value=${ACC}]`).checked=true;
+ chk();go(1);
+}
+function cloudUpdated(type,rows){D[type]=rows;ERR[type]=[];stat(type);chk();if(PG===2){buildFilters();draw()}}
+/* ---------- import ---------- */
+const parts=s=>String(s).split(/,\s*(?=\d{4,}\s*-)/).map(p=>p.replace(/^\s*\d+\s*-\s*/,'').replace(/\s*-\s*ALT\s*$/i,'').trim()).filter(Boolean);
+const isCash=t=>/cash\s*(account|in\s*hand)|^\s*cash\s*$/i.test(t||'');
+function derive(r){
+  const p=parts(r.against);
+  r.ledger=[...new Set(p.filter(x=>/\bexp/i.test(x)).map(x=>x.toUpperCase()))].join(' + ');
+  r.acc=(p.some(isCash)||isCash(r.acct))?'Cash':'Bank';
+}
+const rf=f=>new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsArrayBuffer(f)});
+async function load(type,inp){
+  if(!window.cloudCanManage?.()){alert("Upload permission nahi hai");inp.value="";return}
+  const errs=[];
+  for(const f of inp.files){
+    try{
+      const wb=XLSX.read(await rf(f),{type:'array'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      const spec=SPEC[type],keys=rows.length?Object.keys(rows[0]):[],m={};
+      for(const k in spec)m[k]=keys.find(c=>spec[k].includes(norm(c)));
+      const miss=REQ[type].filter(k=>m[k]===undefined);
+      if(miss.length){errs.push(f.name+': column nahi mila ('+miss.join(', ')+')');continue}
+      const out=rows.map(r=>{const o={src:f.name};for(const k in spec){const v=m[k]===undefined?'':r[m[k]];o[k]=(k==='amount'||k==='balance')?N(v):T(v)}return o}).filter(o=>o.amount||o.balance);
+      if(type==='exp')out.forEach(derive);
+      await window.cloudReplaceFile(type,f.name,out);
+    }catch(e){errs.push(f.name+': file padh nahi paye')}
+  }
+  inp.value='';ERR[type]=errs;stat(type);chk();save();
+}
+function stat(t){
+  const r=D[t],src=uniq(r.map(x=>x.src));let h='';
+  if(r.length){h=`<span class="ok">✅ ${src.length} file • ${r.length} rows</span><div class="fl">${src.map(esc).join('<br>')}</div>`;
+    if(t==='exp'){const k=r.filter(x=>x.ledger).length;h+=`<div class="fl">Exp ledger wali rows: ${k} • hata di gayi: ${r.length-k}</div>`}}
+  else h='<span class="mut">Abhi koi file nahi</span>';
+  h+=ERR[t].map(e=>`<div class="bad">❌ ${esc(e)}</div>`).join('');
+  $('s_'+t).innerHTML=h;
+}
+function chk(){const ok=D.don.length||D.exp.length||D.fund.length;$('go').disabled=!ok;$('n2').disabled=!ok}
+async function clr(t){if(!window.cloudCanManage?.())return; if(!confirm('Cloud se '+t+' ka SAARA DATA permanently delete hoga. Confirm?'))return;await window.cloudClear(t)}
+async function clrAll(){if(!window.cloudCanManage?.())return;if(!confirm('Firebase se teeno collections ka saara data PERMANENTLY delete hoga. Confirm?'))return;for(const t of ['don','exp','fund'])await window.cloudClear(t);FK.forEach(([k])=>F[k]={all:true,sel:[]});save()}
+
+/* ---------- pages ---------- */
+function go(p){
+  PG=p;if(p===2){buildFilters();draw()}
+  $('p1').classList.toggle('on',p===1);$('p2').classList.toggle('on',p===2);
+  $('n1').classList.toggle('on',p===1);$('n2').classList.toggle('on',p===2);
+  save();refit();
+}
+
+/* ---------- Excel-style multi filter ---------- */
+const hasFB=()=>D.fund.some(r=>r.branch&&r.branch!=='—');
+function vals(k){
+  const g={branch:()=>[...D.don.map(r=>r.branch),...D.exp.filter(r=>r.ledger).map(r=>r.branch),...D.fund.map(r=>r.branch).filter(b=>b!=='—')],
+    status:()=>D.don.map(r=>r.status),user:()=>D.don.map(r=>r.user),ledger:()=>D.exp.filter(r=>r.ledger).map(r=>r.ledger)};
+  return uniq(g[k]());
+}
+const isSel=(k,v)=>F[k].all||F[k].sel.includes(v);
+function vis(k){const q=$('ms_'+k).querySelector('input[type=text]').value.toLowerCase();return vals(k).filter(x=>x.toLowerCase().includes(q))}
+function buildFilters(){
+  $('fbar').innerHTML=FK.map(([k,l])=>`<div class="fg"><span>${l}</span><div class="ms" id="ms_${k}"><button class="msb" onclick="tog('${k}',event)"></button><div class="msp" onclick="event.stopPropagation()"><input type="text" placeholder="🔍 Search..." oninput="rl('${k}')"><label class="msa"><input type="checkbox" onchange="selAll('${k}',this.checked)"><b>(Select All)</b></label><div class="msl"></div></div></div></div>`).join('');
+  FK.forEach(([k])=>lab(k));
+}
+function lab(k){
+  const v=vals(k),f=F[k],n=f.all?v.length:v.filter(x=>f.sel.includes(x)).length;
+  $('ms_'+k).querySelector('.msb').textContent=(n===v.length?'All':n===1?v.find(x=>f.sel.includes(x)):n+' selected')+' ▾';
+}
+function rl(k){
+  const b=$('ms_'+k),v=vis(k);
+  b.querySelector('.msl').innerHTML=v.map(x=>`<label><input type="checkbox" ${isSel(k,x)?'checked':''} data-v="${esc(x)}" onchange="setSel('${k}',[this.dataset.v],this.checked)">${esc(x)}</label>`).join('')||'<div class="empty">Kuch nahi mila</div>';
+  b.querySelector('.msa input').checked=v.length>0&&v.every(x=>isSel(k,x));
+}
+function setSel(k,list,on){
+  const all=vals(k),f=F[k];let s=f.all?all.slice():f.sel.filter(x=>all.includes(x));
+  list.forEach(x=>{const i=s.indexOf(x);if(on&&i<0)s.push(x);if(!on&&i>=0)s.splice(i,1)});
+  f.all=s.length===all.length;f.sel=s;lab(k);rl(k);draw();save();
+}
+const selAll=(k,on)=>setSel(k,vis(k),on);
+function tog(k,e){
+  e.stopPropagation();const b=$('ms_'+k),was=b.classList.contains('open');
+  document.querySelectorAll('.ms').forEach(x=>x.classList.remove('open'));
+  if(!was){b.classList.add('open');b.querySelector('input[type=text]').value='';rl(k)}
+}
+document.addEventListener('click',()=>document.querySelectorAll('.ms').forEach(x=>x.classList.remove('open')));
+
+/* ---------- tables ---------- */
+function donTable(rows){
+  if(!rows.length)return '<div class="empty">Koi donation data nahi</div>';
+  const modes=uniq(rows.map(r=>r.mode)),users=uniq(rows.map(r=>r.user)),c={};
+  rows.forEach(r=>{const k=r.user+'\u0001'+r.mode;c[k]=(c[k]||0)+r.amount});
+  let h='<div class="sc"><table><thead><tr><th>User</th>'+modes.map(m=>`<th class="n">${esc(m)}</th>`).join('')+'<th class="n">Total</th></tr></thead><tbody>';
+  users.forEach(u=>{let t=0;h+=`<tr><td><b>${esc(u)}</b></td>`+modes.map(m=>{const v=c[u+'\u0001'+m]||0;t+=v;return `<td class="n">${v?fmt(v):'<span class="z">–</span>'}</td>`}).join('')+`<td class="n"><b>${fmt(t)}</b></td></tr>`});
+  return h+'</tbody><tfoot><tr><td>Grand Total</td>'+modes.map(m=>`<td class="n">${fmt(sum(rows.filter(r=>r.mode===m),'amount'))}</td>`).join('')+`<td class="n">${fmt(sum(rows,'amount'))}</td></tr></tfoot></table></div>`;
+}
+function expTable(rows){
+  if(!rows.length)return '<div class="empty">Koi expenses data nahi</div>';
+  const m={};rows.forEach(r=>m[r.ledger]=(m[r.ledger]||0)+r.amount);
+  return '<div class="sc"><table><thead><tr><th>Ledger</th><th class="n">Amount</th></tr></thead><tbody>'+
+   Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td><b>${esc(k)}</b></td><td class="n">${fmt(v)}</td></tr>`).join('')+
+   `</tbody><tfoot><tr><td>Total Expenses</td><td class="n">${fmt(sum(rows,'amount'))}</td></tr></tfoot></table></div>`;
+}
+function fundTable(rows){
+  if(!rows.length)return '<div class="empty">Koi fund data nahi</div>';
+  return '<div class="sc"><table><thead><tr><th>Bank Account</th><th>Purpose</th><th>Fund Category</th><th class="n">Balance</th></tr></thead><tbody>'+
+   rows.map(r=>`<tr><td><b>${esc(r.bank)}</b></td><td>${esc(r.purpose)}</td><td>${esc(r.cat)}</td><td class="n">${fmt(r.balance)}</td></tr>`).join('')+
+   `</tbody><tfoot><tr><td colspan="3">Total Fund</td><td class="n">${fmt(sum(rows,'balance'))}</td></tr></tfoot></table></div>`;
+}
+const sec=(c,t,s,b)=>`<div class="sec" style="--c:${c}"><h3>${t}<small>${s}</small></h3>${b}</div>`;
+
+function draw(){
+  const show=k=>U[k]&&D[k].length,fb=hasFB();
+  const don=D.don.filter(r=>isSel('branch',r.branch)&&isSel('status',r.status)&&isSel('user',r.user));
+  const exp=D.exp.filter(r=>r.ledger&&isSel('branch',r.branch)&&isSel('ledger',r.ledger)&&(ACC==='all'||(ACC==='cash')===(r.acc==='Cash')));
+  const fund=D.fund.filter(r=>!fb||isSel('branch',r.branch));
+  const inc=show('don')?sum(don,'amount'):0,ex=show('exp')?sum(exp,'amount'):0,fd=show('fund')?sum(fund,'balance'):0,net=inc-ex;
+  const sub=FK.filter(([k])=>!F[k].all).map(([k,l])=>l+': '+(vals(k).filter(x=>F[k].sel.includes(x)).join(', ')||'None'));
+  if(ACC!=='all')sub.push('Expenses: '+(ACC==='cash'?'Cash Account':'Bank'));
+  $('sub').textContent=sub.join(' • ')||'All Branches • Complete Data';
+  let h='';
+  if(show('don'))h+=sec('#23805a','💰 Donation Report',don.length+' entries',donTable(don));
+  let two='';
+  if(show('exp'))two+=sec('#bb4637','🧾 Expenses Report',(ACC==='cash'?'Cash Account • ':ACC==='bank'?'Bank • ':'')+exp.length+' entries',expTable(exp));
+  if(show('fund'))two+=sec('#1f6fa8','🏦 Fund Position Balance',fund.length+' accounts',fundTable(fund)+(!fb&&!F.branch.all?'<div class="note">Fund file me Branch column nahi hai, isliye saari branch ka fund dikh raha hai.</div>':''));
+  if(two)h+=`<div class="two">${two}</div>`;
+  h+=`<div class="sum">
+   <div class="k" style="--c:#23805a"><div>Total Income (Donation)</div><b>${fmt(inc)}</b></div>
+   <div class="k" style="--c:#bb4637"><div>Total Expenses</div><b>${fmt(ex)}</b></div>
+   <div class="k" style="--c:#1f6fa8"><div>Fund Available</div><b>${fmt(fd)}</b></div>
+   <div class="k" style="--c:${net>=0?'#23805a':'#bb4637'}"><div>${net>=0?'Surplus':'Deficit'} (Income − Expenses)</div><b>${fmt(Math.abs(net))}</b></div></div>
+   <div class="res" style="background:${net>=0?'#23805a':'#bb4637'}"><span>${net>=0?'✅ Surplus':'⚠️ Deficit'}: ${fmt(Math.abs(net))}</span><span>Fund Available: ${fmt(fd)}</span></div>`;
+  $('out').innerHTML=h;refit();
+}
+
+/* ---------- one page fit (screen + PDF) ---------- */
+function fit(W,H){
+  const c=$('cap');c.style.zoom=1;
+  const z=Math.max(.3,Math.min(1,W/c.offsetWidth,H/c.offsetHeight));c.style.zoom=z;return z;
+}
+function refit(){
+  const c=$('cap');
+  if(FIT&&PG===2){window.scrollTo(0,0);fit(innerWidth-28,innerHeight-(c.getBoundingClientRect().top)-14)}else c.style.zoom=1;
+}
+function toggleFit(){FIT=!FIT;$('fitb').textContent=FIT?'🔍 Normal View':'📱 Fit 1 Page';refit()}
+addEventListener('resize',refit);
+addEventListener('beforeprint',()=>{if(PG===2){document.body.classList.add('pr');fit(745,1068)}});
+addEventListener('afterprint',()=>{document.body.classList.remove('pr');refit()});
+
+/* ---------- demo ---------- */
+function demo(){
+  if(!window.cloudCanManage?.()){alert('Admin only');return;}
+  const br=['Mathura','Vrindavan','Delhi'],us=['Ramesh','Suresh','Anita'],md=['Cash','UPI','Cheque'];
+  const A=['5010101 - SALARIES (P) EXP. - ALT','5020201 - ELECTRICITY EXP. - ALT','3030201 - Loan to staff - ALT','2020102 - Bank -- local currency - ALT'];
+  D={don:[],exp:[],fund:[]};
+  br.forEach((b,i)=>{
+    us.forEach((u,j)=>md.forEach((m,k)=>D.don.push({src:'demo_donation.xlsx',branch:b,status:(j+k)%3?'Deposited':'Pending',user:u,mode:m,amount:(i+1)*1000+j*500+k*250})));
+    A.forEach((a,j)=>{const r={src:'demo_expenses.xlsx',against:'1010104 - EMPLOYEE WELFARE FUND (AKKF)` - ALT, '+a+(j%2?', 1000001 - Cash Account - ALT':''),branch:b,amount:(i+1)*700+j*900,acct:'—'};derive(r);D.exp.push(r)})});
+  D.fund=[{src:'demo_fund.xlsx',bank:'HDFC Bank',purpose:'Building Fund',cat:'Restricted',balance:250000,branch:'—'},{src:'demo_fund.xlsx',bank:'Axis Bank',purpose:'Annadaan',cat:'General',balance:120000,branch:'—'}];
+  alert('Demo local preview only. Demo data is not saved to Firebase.');['don','exp','fund'].forEach(stat);chk();go(2);
+}
+restore();
+function showMembers(){document.getElementById('membersPanel').style.display='block';window.cloudLoadMembers?.()}
+</script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
+import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, writeBatch, deleteDoc, setDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+const firebaseConfig = {
+  apiKey: 'AIzaSyBy6aLsh-4K7bDwA-C37nSH3x-e4P_0-Cg',
+  authDomain: 'branch-finance-update.firebaseapp.com',
+  projectId: 'branch-finance-update',
+  storageBucket: 'branch-finance-update.firebasestorage.app',
+  messagingSenderId: '1054813943505',
+  appId: '1:1054813943505:web:55704ab92c760893a337f0'
+};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const mainUID='mKxq65dFRZVkNIFYPPCtPSSn6as1';
+const names={don:'donations',exp:'expenses',fund:'funds'};
+let profile=null, currentUID='',unsubs=[];
+const el=id=>document.getElementById(id);
+const hasPermission=k=>profile?.permissions?.[k]===true;
+const superAdmin=()=>currentUID===mainUID&&profile?.role==='superadmin'&&profile?.active===true;
+const canManage=()=>superAdmin()||hasPermission('manageData');
+const canRead=()=>superAdmin()||profile?.role==='admin'||hasPermission('viewReports');
+window.cloudCanManage=canManage;
+window.cloudLogout=()=>signOut(auth);
+const showError=s=>el('authError').textContent=s;
+el('loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();showError('Signing in…');
+ try{await signInWithEmailAndPassword(auth,el('loginEmail').value.trim(),el('loginPassword').value)}catch(err){showError('Login failed: '+err.code)}
+});
+function stop(){unsubs.forEach(u=>u());unsubs=[];profile=null;currentUID='';el('appRoot').style.display='none';el('authGate').style.display='flex';el('loginForm').style.display='block';el('authLoading').style.display='none';for(const k of Object.keys(names))window.cloudUpdated(k,[])}
+onAuthStateChanged(auth,async user=>{
+ stop();if(!user)return;
+ el('loginForm').style.display='none';el('authLoading').style.display='block';
+ try{
+  const snap=await getDoc(doc(db,'users',user.uid));
+  if(!snap.exists()||snap.data().active!==true){throw Error('Account not active or not authorized')}
+  profile=snap.data();currentUID=user.uid;
+  if(!canRead())throw Error('No permission to view reports');
+  el('whoami').textContent=(user.email||'')+' · '+(superAdmin()?'Super Admin':profile.role||'Member');
+  el('membersBtn').style.display=superAdmin()?'inline-block':'none';
+  for(const b of document.querySelectorAll('#p1 input[type=file],#p1 .btn.sm,#p1 .btn.r'))b.disabled=!canManage();
+  el('appRoot').style.display='block';el('authGate').style.display='none';
+  for(const [kind,coll] of Object.entries(names)){
+   unsubs.push(onSnapshot(collection(db,coll),snap=>{
+    const rows=snap.docs.map(d=>d.data().row).filter(Boolean);
+    window.cloudUpdated(kind,rows);
+   },err=>{console.error(err);alert('Cannot read '+coll+': '+err.message)}));
+  }
+ }catch(err){await signOut(auth);showError(err.message)}
+});
+function chunks(arr,n){const out=[];for(let i=0;i<arr.length;i+=n)out.push(arr.slice(i,i+n));return out}
+async function deleteDocs(refs){for(const part of chunks(refs,400)){const batch=writeBatch(db);part.forEach(d=>batch.delete(d.ref));await batch.commit()}}
+window.cloudReplaceFile=async(kind,filename,rows)=>{
+ if(!canManage())throw Error('Permission denied');
+ const coll=names[kind];
+ // Save first; avoids deleting old data on failed initial write.
+ // Each row has its own Firestore document, avoiding 1 MiB single-document limits.
+ const uploadId=crypto.randomUUID();
+ const ids=[];
+ try{
+  for(const part of chunks(rows,350)){
+   const batch=writeBatch(db);
+   part.forEach((row,i)=>{const ref=doc(collection(db,coll));ids.push(ref);batch.set(ref,{src:filename,uploadId,row,createdBy:currentUID})});
+   await batch.commit();
+  }
+  const prior=await getDocs(query(collection(db,coll),where('src','==',filename)));
+  await deleteDocs(prior.docs.filter(d=>d.data().uploadId!==uploadId));
+ }catch(err){console.error(err);throw Error('Upload failed. Check internet and Firestore permissions: '+err.message)}
+};
+window.cloudClear=async kind=>{if(!canManage())return;const snap=await getDocs(collection(db,names[kind]));await deleteDocs(snap.docs)};
+window.cloudLoadMembers=async()=>{
+ if(!superAdmin())return;
+ try{
+  const snap=await getDocs(collection(db,'users'));
+  el('memberList').innerHTML='<table><thead><tr><th>Email</th><th>Role</th><th>Active</th><th>Data permission</th><th>Action</th></tr></thead><tbody>'+snap.docs.map(d=>{
+   const v=d.data(),fixed=d.id===mainUID;
+   return `<tr><td>${esc(v.email||d.id)}</td><td>${esc(v.role||'viewer')}</td><td>${v.active?'Yes':'No'}</td><td>${v.permissions?.manageData?'Yes':'No'}</td><td>${fixed?'Protected':`<button class="btn sm" data-uid="${esc(d.id)}">Edit</button>`}</td></tr>`;
+  }).join('')+'</tbody></table>';
+  el('memberList').querySelectorAll('[data-uid]').forEach(b=>b.addEventListener('click',()=>{
+   const d=snap.docs.find(x=>x.id===b.dataset.uid),v=d.data();el('memberUID').value=d.id;el('memberEmail').value=v.email||'';el('memberRole').value=v.role||'viewer';el('memberActive').checked=v.active===true;el('memberManage').checked=v.permissions?.manageData===true;
+  }));
+ }catch(e){el('memberError').textContent=e.message}
+};
+el('memberForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(!superAdmin())return;
+ const uid=el('memberUID').value.trim(),email=el('memberEmail').value.trim();
+ if(uid===mainUID){el('memberError').textContent='Main Super Admin profile is protected';return}
+ try{
+  await setDoc(doc(db,'users',uid),{email,role:el('memberRole').value,active:el('memberActive').checked,permissions:{viewReports:true,manageData:el('memberManage').checked}},{merge:true});
+  el('memberError').textContent='Profile saved. Firebase Authentication account must also exist.';
+  await window.cloudLoadMembers();
+ }catch(err){el('memberError').textContent=err.message}
+});
+</script>
+</body>
+</html>
