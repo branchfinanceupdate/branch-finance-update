@@ -6,7 +6,10 @@
 <title>Branch Budget Report</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
 <style>
 :root{--bg:#f6f7fd;--card:#fff;--cardb:#e4e7f5;--tx:#1c1f3a;--mut:#6b7194;--line:#eceef8;--green:#059669;--red:#e11d48;--g1:#7c3aed;--g2:#06b6d4;color-scheme:light}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -55,7 +58,7 @@ h2,h3,.k b,.res{font-family:'Space Grotesk','Plus Jakarta Sans',sans-serif}
 .ab{display:flex;gap:6px}.btn.v{background:#fff;color:var(--g1);border:1px solid #d9ccff;box-shadow:none}.btn.dl{background:#fff;color:#0891b2;border:1px solid #bdeaf3;box-shadow:none}
 .btn.v:hover{background:#f5f0ff}.btn.dl:hover{background:#ecfbff}
 .upd{font-size:12px;font-weight:700;color:var(--mut);background:#f1f2fb;border:1px solid var(--cardb);border-radius:999px;padding:8px 14px;white-space:nowrap}
-.pdfb{padding:6px 10px;display:inline-flex;align-items:center}
+.pdfb{padding:6px 10px;display:inline-flex;align-items:center}.clear-filter-btn{white-space:nowrap;display:inline-flex;align-items:center;min-height:38px}
 .row{display:flex;gap:8px;align-items:stretch}
 .drop{flex:1;border:1.5px dashed #c5cae6;border-radius:12px;padding:14px;text-align:center;cursor:pointer;color:var(--mut);font-weight:600;background:#fafbff;transition:.15s}
 .drop:hover{border-color:var(--c);color:var(--c);background:#fff}.drop input{display:none}
@@ -71,8 +74,10 @@ input[type=checkbox],input[type=radio]{accent-color:var(--g1)}
 .btn.sm{padding:8px 13px;font-size:12px;background:#fff;color:var(--red);border:1px solid #fecdd3;box-shadow:none}.btn.sm:hover{background:#fff1f2}
 .btn.sm2{padding:7px 14px;font-size:12px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
-.filter{padding:14px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:18px}
-.fbar{display:flex;flex-wrap:wrap;gap:14px}.fg span{display:block;font-size:10.5px;font-weight:700;color:var(--mut);margin-bottom:5px;text-transform:uppercase;letter-spacing:.7px}
+.filter{padding:17px 20px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:18px}
+.fbar{flex:1 1 850px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}.fg{flex:0 1 180px;min-width:160px}.fg.branch-fg{flex-basis:245px}.fg.search-fg{flex:1 1 360px;min-width:280px}.fg span{display:block;font-size:10.5px;font-weight:700;color:var(--mut);margin-bottom:6px;text-transform:uppercase;letter-spacing:.7px}
+.filter-select,.report-search{width:100%;height:42px;border:1px solid var(--cardb);border-radius:13px;background:linear-gradient(135deg,#fbfbff,#f5f7ff);color:var(--tx);font:600 13px inherit;font-family:inherit;padding:0 14px;box-shadow:inset 0 1px 2px rgba(60,72,145,.04)}.report-search{font-weight:500;padding-left:16px}.filter-select:focus,.report-search:focus{outline:2px solid var(--g1);border-color:transparent;background:#fff}.fbar .msb{width:100%;max-width:none;height:42px;border-radius:13px;background:linear-gradient(135deg,#fbfbff,#f5f7ff)}
+.budget-source-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}.budget-source-tabs button{border:1px solid var(--cardb);background:#fff;color:var(--mut);padding:10px 18px;border-radius:12px;font:700 13px inherit;font-family:inherit;cursor:pointer}.budget-source-tabs button:hover{border-color:var(--g1);color:var(--g1)}.budget-source-tabs button.on{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--g1),var(--g2));box-shadow:0 5px 14px rgba(124,58,237,.25)}
 .filter .sp{flex:1}
 .ms{position:relative}
 .msb{padding:9px 14px;border:1px solid var(--cardb);border-radius:999px;background:#f8f9fe;color:var(--tx);font:600 13px inherit;font-family:inherit;cursor:pointer;min-width:170px;max-width:230px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -81,14 +86,14 @@ input[type=checkbox],input[type=radio]{accent-color:var(--g1)}
 .ms.open .msp{display:block}
 .msp input[type=text]{width:100%;padding:8px 10px;border:1px solid var(--cardb);border-radius:8px;background:#f8f9fe;color:var(--tx);font-family:inherit}
 .msl{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
-.msl label,.msa{display:flex;gap:8px;padding:6px 8px;cursor:pointer;align-items:center;font-size:13px}.msa{margin-top:4px;border-bottom:1px solid var(--line)}
+.msl label,.msa{display:flex;gap:8px;padding:6px 8px;cursor:pointer;align-items:center;font-size:13px}.msa{margin-top:4px;border-bottom:1px solid var(--line);justify-content:space-between}.msa>span{display:flex;gap:8px;align-items:center}.mclear{border:0;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:7px;padding:4px 8px;font:700 11px inherit;font-family:inherit;cursor:pointer}.mclear:hover{background:#ffe4e6}
 .sec{margin-bottom:18px;overflow:hidden}
 .sec>h3{margin:0;padding:15px 20px;color:var(--tx);font-size:16px;font-weight:700;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 .sec>h3 small{font-weight:600;color:var(--c);font-size:12px;border:1px solid var(--c);padding:2px 11px;border-radius:999px;font-family:'Plus Jakarta Sans',sans-serif}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}.two .sec{margin-bottom:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}.two .sec{margin-bottom:0}.fund-balance-stack{display:grid;grid-template-columns:1fr;gap:18px}.fund-balance-stack .sec{margin-bottom:0}.fund-balance-table{overflow-x:visible}.fund-balance-table table{table-layout:fixed}.fund-balance-table th,.fund-balance-table td{white-space:normal;overflow-wrap:anywhere}.fund-balance-table .sno{width:50px;box-sizing:border-box;white-space:nowrap}.fund-balance-table .branch-sticky{width:34%;box-sizing:border-box}.fund-balance-table th:nth-child(3){width:22%}.fund-balance-table th:nth-child(4){width:24%}.fund-balance-table th.n,.fund-balance-table td.n{white-space:nowrap}
 @media(max-width:1000px){.two{grid-template-columns:1fr}}
-.sc{overflow-x:auto}table{border-collapse:collapse;width:100%}
-th,td{padding:10px 16px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-size:13px}
+.sc{overflow-x:auto;max-width:100%;position:relative}table{border-collapse:collapse;width:100%}
+th,td{padding:10px 16px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-size:13px}.sno{width:50px;text-align:center!important;font-variant-numeric:tabular-nums;position:sticky;left:0;z-index:3;background:#fff}.branch-sticky{position:sticky;left:50px;z-index:2;background:#fff}.sc th.sno{z-index:5;background:#fafbff}.sc th.branch-sticky{z-index:4;background:#fafbff}tbody tr:hover .sno,tbody tr:hover .branch-sticky{background:#f7f8fe}
 th{color:var(--mut);background:#fafbff;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;font-weight:700}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 tbody tr:hover{background:#f7f8fe}
@@ -98,6 +103,7 @@ tfoot td{background:#fff7e0;color:#92400e;font-weight:800;border-top:1px solid #
 .k{padding:18px 20px;overflow:hidden}
 .k::after{content:"";position:absolute;right:-26px;top:-26px;width:100px;height:100px;border-radius:50%;background:var(--c);opacity:.12;filter:blur(20px)}
 .k div{font-size:12px;color:var(--mut);font-weight:700;position:relative}.k b{display:block;font-size:26px;font-weight:700;margin-top:6px;color:var(--c);position:relative}
+.source-detail-card{border:0;width:100%;text-align:left;font:inherit;font-family:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s}.source-detail-card:not(:disabled):hover,.source-detail-card:not(:disabled):focus-visible{transform:translateY(-3px);box-shadow:0 13px 26px rgba(42,52,116,.18);outline:2px solid var(--c);outline-offset:2px}.source-detail-card:disabled{cursor:default;opacity:.76}.source-detail-card small{display:block;position:relative;margin-top:7px;font-size:11px;color:var(--mut)}.branch-source-details{margin-top:16px}.branch-source-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;background:#f7f8ff;border-bottom:1px solid var(--line)}.branch-source-head h4{margin:0;color:#1d2855;font-size:15px}.record-list{display:grid;gap:16px;padding:16px}.record-card{--user:#d97706;--user-soft:#fff7e9;border:1px solid color-mix(in srgb,var(--user) 28%,#dfe4f3);border-left:5px solid var(--user);border-radius:15px;background:linear-gradient(135deg,var(--user-soft),#fff 34%);overflow:hidden;box-shadow:0 7px 18px rgba(38,46,100,.07)}.record-card.user-tone-1{--user:#2563eb;--user-soft:#eff6ff}.record-card.user-tone-2{--user:#7c3aed;--user-soft:#f5f0ff}.record-card.user-tone-3{--user:#059669;--user-soft:#ecfdf5}.record-card.user-tone-4{--user:#db2777;--user-soft:#fdf2f8}.record-card h5{margin:0;padding:12px 15px;background:linear-gradient(90deg,var(--user-soft),#fff);color:#1c2852;font-size:14px;border-bottom:1px solid color-mix(in srgb,var(--user) 16%,#e6eaf5)}.record-card h5 small{float:right;color:#fff;background:var(--user);padding:4px 9px;border-radius:999px;font-size:11px;box-shadow:0 3px 8px color-mix(in srgb,var(--user) 28%,transparent)}.user-receipts{display:grid;gap:12px;padding:12px 14px 14px}.receipt-detail{--receipt:#d97706;border:1px solid color-mix(in srgb,var(--receipt) 25%,#e1e6f5);border-radius:11px;overflow:hidden;background:#fff;box-shadow:0 3px 10px rgba(48,58,115,.05)}.receipt-detail.receipt-tone-1{--receipt:#2563eb}.receipt-detail.receipt-tone-2{--receipt:#7c3aed}.receipt-detail.receipt-tone-3{--receipt:#059669}.receipt-detail.receipt-tone-4{--receipt:#db2777}.receipt-detail-head{padding:10px 12px;background:linear-gradient(90deg,color-mix(in srgb,var(--receipt) 13%,#fff),#fff);border-bottom:1px solid color-mix(in srgb,var(--receipt) 18%,#e8ebf6);color:#2d3761;font-size:12px;font-weight:800;border-left:4px solid var(--receipt)}.record-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:#e9edf7}.record-field{padding:10px 13px;border-top:1px solid #edf0fa;min-width:0;background:#fff}.receipt-detail .record-field{border:0}.receipt-detail .record-field:nth-child(3n+1){background:#fbfcff}.receipt-detail .record-field:nth-child(3n+2){background:#f8fbff}.receipt-detail .record-field:nth-child(3n){background:#fcfaff}.receipt-detail .record-field:last-child{background:#ecfdf5}.record-field span{display:block;font-size:10px;font-weight:800;color:#737d97;text-transform:uppercase;letter-spacing:.45px}.record-field b{display:block;margin-top:4px;font-size:12px;color:#202952;white-space:normal;overflow-wrap:anywhere}.record-empty{padding:18px;color:var(--mut);text-align:center}
 .res{margin-top:16px;border-radius:18px;padding:18px 24px;color:#fff;font-weight:700;font-size:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .res.pos{background:linear-gradient(100deg,#059669,#10b981 60%,#06b6d4);box-shadow:0 10px 26px rgba(16,185,129,.3)}
 .res.neg{background:linear-gradient(100deg,#be123c,#f43f5e 60%,#fb923c);box-shadow:0 10px 26px rgba(244,63,94,.3)}
@@ -111,11 +117,62 @@ tfoot td{background:#fff7e0;color:#92400e;font-weight:800;border-top:1px solid #
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tx);color:#fff;padding:11px 20px;border-radius:999px;font-weight:600;font-size:13px;z-index:200;display:none;max-width:90vw;box-shadow:0 10px 30px rgba(28,31,58,.35)}
 .bsel summary{cursor:pointer;font-weight:600}.bl{border:1px solid var(--cardb);border-radius:10px;padding:6px;max-height:160px;overflow:auto;margin-top:6px;min-width:190px;background:#fff}
 .bl label{display:flex;gap:8px;padding:3px 4px;cursor:pointer;font-size:13px}
+.invite-branch-picker{position:relative;flex:1 1 300px;min-width:260px}.invite-branch-picker summary{height:40px;display:flex;align-items:center;list-style:none;cursor:pointer;border:1px solid var(--cardb);border-radius:12px;background:#f8f9fe;color:var(--tx);font-weight:600;padding:0 13px}.invite-branch-picker summary::-webkit-details-marker{display:none}.invite-branch-picker summary::after{content:'▾';margin-left:auto;color:var(--g1);font-size:14px}.invite-branch-picker[open] summary{border-color:var(--g1);background:#fff}.invite-branch-panel{position:static;margin-top:7px;background:#fff;border:1px solid var(--cardb);border-radius:12px;box-shadow:0 8px 18px rgba(54,52,124,.10);padding:10px}.invite-branch-panel input[type=search]{width:100%;padding:9px 10px;border:1px solid var(--cardb);border-radius:8px;font:inherit;font-family:inherit}.invite-all{display:flex;gap:7px;align-items:center;padding:8px 3px;font-size:12px;border-bottom:1px solid var(--line);cursor:pointer}.invite-branch-list{max-height:220px;overflow:auto}.invite-branch-list label{display:flex;gap:8px;align-items:flex-start;padding:7px 3px;cursor:pointer;font-size:12px;line-height:1.35}.invite-branch-list label:hover{background:#f6f4ff}.invite-branch-empty{padding:10px 3px;color:var(--mut);font-size:12px}.invite-branch-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:10px;border-top:1px solid var(--line);margin-top:8px}
 td select{padding:6px;border:1px solid var(--cardb);border-radius:8px;background:#fff;color:var(--tx);font-family:inherit;font-size:13px}
 .pr .wrap{max-width:1100px;width:1100px;margin:0;padding:0}
 @page{size:A4 portrait;margin:6mm}
-@media print{html,body{background:#fff!important}.top,.filter,.fitbtn{display:none!important}.wrap{margin:0;padding:0}.imp,.sec,.k{box-shadow:none}.k::after{display:none}.title h2{background:none;color:#1c1f3a}}
+@media print{html,body{background:#fff!important}.top,.filter,.fitbtn,.budget-source-tabs{display:none!important}.wrap{margin:0;padding:0}.imp,.sec,.k{box-shadow:none}.k::after{display:none}.title h2{background:none;color:#1c1f3a}}
 @media(max-width:900px){.top{padding:12px 14px}.wrap{padding:18px 12px}.nav{order:3;width:100%}}
+
+/* Professional vertical navigation: preserve existing module IDs and click handlers. */
+:root{--sidebar-width:260px}
+.top{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-width);height:100vh;z-index:30;display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;justify-content:flex-start;gap:20px;padding:24px 14px 18px;background:rgba(255,255,255,.96);border-right:1px solid var(--cardb);border-bottom:0;overflow-y:auto;overflow-x:hidden;box-shadow:8px 0 28px rgba(76,60,160,.035)}
+.top>div:first-child{padding:4px 8px 16px;border-bottom:1px solid var(--line)}
+.brand-refresh{cursor:pointer;border-radius:12px;transition:background .15s,transform .15s}.brand-refresh:hover{background:#f3f1ff}.brand-refresh:active{transform:scale(.985)}.brand-refresh:focus-visible{outline:2px solid #7c3aed;outline-offset:3px}
+.top h1{font-size:17px;line-height:1.4;gap:11px}
+.top p{font-size:10px;line-height:1.5;margin-left:33px}
+.nav{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;max-width:none;overflow:visible;padding:0;background:transparent;border:0;border-radius:0}
+.nav button{display:block;width:100%;min-height:43px;text-align:left;padding:11px 15px;border-radius:11px;font-size:13px;white-space:normal;line-height:1.4}
+.nav button.on{box-shadow:0 4px 12px rgba(124,58,237,.20)}
+#n1{margin-left:0;position:static}#n1::before{display:none}
+.who{margin-top:auto;padding:14px 8px 0;border-top:1px solid var(--line);align-items:flex-start;flex-direction:column;overflow-wrap:anywhere}
+.lm{margin-left:var(--sidebar-width);padding:11px 24px}
+.wrap{width:calc(100% - var(--sidebar-width));max-width:1600px;margin:0 0 0 var(--sidebar-width);padding:30px clamp(18px,3vw,46px) 48px}
+@media(max-width:760px){
+ :root{--sidebar-width:0px}
+ .top{position:relative;top:auto;left:auto;bottom:auto;width:100%;height:auto;max-height:none;overflow:visible;padding:14px 16px;gap:12px;border-right:0;border-bottom:1px solid var(--cardb);box-shadow:none}
+ .top>div:first-child{padding:2px 0 10px}
+ .nav{order:initial;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .nav button{min-height:42px;padding:10px 11px;font-size:12px}
+ .who{margin-top:0;flex-direction:row;padding:10px 0 0}
+ .lm{margin-left:0;padding:10px 16px}
+ .wrap{width:100%;margin:0;padding:20px 14px 35px}
+}
+@media(max-width:390px){.nav{grid-template-columns:1fr}}
+@media print{
+ .top{display:none!important}.lm{display:none!important}
+ .wrap,.pr .wrap{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
+}
+/* Auth-first: never expose application before a verified cloud login. */
+body:not(.session-ready) .top,body:not(.session-ready) .wrap,body:not(.session-ready) .lm{display:none!important}
+body:not(.session-ready) #auth{display:flex!important}
+.remember-email-wrap{position:relative}
+.remembered-emails{position:absolute;z-index:1000;top:calc(100% - 5px);left:0;right:0;background:white;border:1px solid #dfe4f4;border-radius:12px;box-shadow:0 10px 24px #20274622;overflow:hidden}
+.remembered-email-option{display:block;width:100%;padding:12px 15px;border:0;background:white;color:#252d50;text-align:left;cursor:pointer;font-size:14px;overflow-wrap:anywhere}
+.remembered-email-option:hover,.remembered-email-option:focus-visible{background:#eef1ff}
+.password-field{position:relative}
+.password-field input{padding-right:54px}
+.password-toggle{position:absolute;right:8px;top:10px;width:40px;height:42px;border:0;background:transparent;color:#68748c;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.password-toggle:hover,.password-toggle:focus-visible{background:#e9edfa;color:#222b50}
+.password-toggle svg{width:21px;height:21px}
+.dash-group{margin-top:23px}.dash-group h3{font-size:16px;color:#24234e;margin:0 0 12px;font-weight:800}.dash-grid{display:grid;gap:15px}.dash-four{grid-template-columns:repeat(4,minmax(0,1fr))}.dash-two{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-three{grid-template-columns:repeat(3,minmax(0,1fr))}.dash-card{min-height:116px;box-sizing:border-box}.dash-card small{display:block;font-size:11px;color:#68728f;margin-top:9px;line-height:1.4;position:relative}.dash-card b{overflow-wrap:anywhere}.dash-click{cursor:pointer}.dash-click:hover,.dash-click:focus-visible{outline:2px solid var(--c);outline-offset:2px;transform:translateY(-2px)}.dash-hint{font-size:12px;color:#6b7390;margin-top:19px;line-height:1.5}.branch-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}.branch-card{background:linear-gradient(145deg,#fff,#f9faff);border:1px solid #dde2f4;border-left:4px solid #2563eb;border-radius:15px;padding:15px 15px 13px;box-shadow:0 8px 22px rgba(44,55,110,.08)}.branch-card-click{cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s}.branch-card-click:hover,.branch-card-click:focus-visible{transform:translateY(-3px);border-color:#7c3aed;box-shadow:0 13px 28px rgba(68,59,168,.20);outline:none}.branch-card h4{margin:0 0 13px;font-size:14px;line-height:1.35;color:#182452}.branch-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.branch-metric{min-width:0;padding:8px 7px;border-radius:9px;background:#f5f7fe;text-align:center}.branch-metric:nth-child(1){background:#edfcf5}.branch-metric:nth-child(2){background:#fff1f3}.branch-metric:nth-child(3){background:#edf8ff}.branch-metric:nth-child(4){background:#f5efff}.branch-metric:nth-child(5){background:#fff5e8}.branch-metric small{display:block;font-size:10px;font-weight:800;color:#66718d;white-space:nowrap}.branch-metric b{display:block;margin-top:3px;font-size:13px;color:#202a50;overflow-wrap:anywhere}.branch-card .branch-net{margin-top:10px;padding-top:9px;border-top:1px dashed #d8deef;font-size:12px;color:#62708f}.branch-card .branch-net b{float:right;color:#009a70;font-size:13px}.branch-card .branch-net.neg b{color:#e11d48}@media(max-width:1100px){.dash-four{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.dash-grid,.branch-cards{grid-template-columns:1fr}}
+.choice-modal{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(18,22,47,.58)}.choice-modal.show{display:flex}.choice-card{width:min(560px,100%);background:#fff;border:1px solid var(--cardb);border-radius:20px;box-shadow:0 24px 70px rgba(13,18,46,.35);padding:24px}.choice-card h2{margin:0 0 9px;font-size:21px}.choice-card p{margin:8px 0;color:var(--mut);line-height:1.55}.choice-summary{margin:15px 0;padding:12px 14px;border-radius:12px;background:#f5f6fe;color:var(--tx);font-weight:600;line-height:1.5}.choice-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.choice-actions .btn{flex:1;min-width:130px}.choice-actions .btn.r{background:linear-gradient(135deg,#b45309,#f59e0b)}
+.branch-detail-shell{max-width:1500px;margin:0 auto}.detail-breadcrumb{display:flex;align-items:center;gap:8px;color:#65718e;font-size:13px;font-weight:700;margin-bottom:10px}.branch-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:20px 22px;border-radius:18px;background:linear-gradient(135deg,#fff,#f5f8ff);border:1px solid #dfe4f5;box-shadow:0 9px 26px rgba(48,55,115,.08)}.branch-detail-head h2{margin:0;color:#1c2854;font-size:25px;line-height:1.25}.branch-detail-head p{margin:7px 0 0;color:#697592;font-size:13px}.branch-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.branch-tab{appearance:none;border:1px solid #dce2f3;background:#fff;color:#384363;border-radius:11px;padding:10px 18px;font:700 14px inherit;font-family:inherit;cursor:pointer;min-width:100px}.branch-tab:hover{border-color:#7c3aed;background:#f7f3ff}.branch-tab.on{color:#fff;border-color:transparent;background:linear-gradient(135deg,#5b3df5,#0ea5d8);box-shadow:0 8px 18px rgba(83,59,234,.25)}.branch-detail-cards{margin-top:0}.branch-detail-source{appearance:none;border:0;text-align:left;font:inherit;font-family:inherit;cursor:pointer;position:relative}.branch-detail-source:hover,.branch-detail-source:focus-visible{transform:translateY(-3px);outline:2px solid var(--c);outline-offset:2px;box-shadow:0 14px 25px rgba(44,51,106,.18)}.branch-detail-source small{display:block;position:relative;margin-top:8px;color:#68738e;font-size:11px}.branch-card h4.branch-card-name{cursor:pointer;border-radius:8px;padding:2px 3px;margin-left:-3px;margin-right:-3px}.branch-card h4.branch-card-name:hover,.branch-card h4.branch-card-name:focus-visible{color:#5b3df5;outline:2px solid #b9abff;outline-offset:3px}.branch-metric.dashboard-source{border:0;font:inherit;font-family:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s}.branch-metric.dashboard-source:hover,.branch-metric.dashboard-source:focus-visible{transform:translateY(-2px);box-shadow:0 5px 12px rgba(51,59,120,.15);outline:2px solid #7c3aed;outline-offset:2px}.branch-metric.dashboard-source small,.branch-metric.dashboard-source b{pointer-events:none}@media(max-width:650px){.branch-detail-head{display:block}.branch-detail-head .btn{margin-top:13px}.branch-tab{flex:1;min-width:84px;padding:9px 8px}}
+.branch-detail-sticky{position:sticky;top:0;z-index:18;padding:10px 0 5px;background:linear-gradient(180deg,#f8f9ff 88%,rgba(248,249,255,.88));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 10px 16px -18px rgba(28,40,84,.55)}
+.branch-sticky-totals{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:8px;margin:0 0 8px}.branch-sticky-total{border:1px solid color-mix(in srgb,var(--c) 28%,#dfe5f5);border-top:3px solid var(--c);background:linear-gradient(135deg,#fff,color-mix(in srgb,var(--c) 8%,#fff));border-radius:10px;padding:8px 10px;text-align:left;font:inherit;font-family:inherit;cursor:pointer;min-width:0}.branch-sticky-total span{display:block;font-size:10px;font-weight:800;color:#6c7591;text-transform:uppercase;letter-spacing:.4px}.branch-sticky-total b{display:block;margin-top:3px;color:var(--c);font-family:'Space Grotesk',sans-serif;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.branch-sticky-total:hover,.branch-sticky-total:focus-visible{outline:2px solid var(--c);outline-offset:2px;transform:translateY(-1px)}
+@media(max-width:900px){.fg.search-fg{flex-basis:100%;min-width:0}.branch-sticky-totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.user-mobile-head{margin-left:8px;color:#596985;font-weight:700}.user-mobile-head b{color:#173e81;font-weight:900}
+.entry-detail-btn{appearance:none;border:0;background:transparent;color:#2855c7;font:inherit;font-family:inherit;font-weight:800;cursor:pointer;padding:2px 3px;border-radius:6px;text-decoration:underline;text-underline-offset:3px}.entry-detail-btn:hover,.entry-detail-btn:focus-visible{color:#6d28d9;background:#f1efff;outline:2px solid #b9abff;outline-offset:2px}.branch-name-btn{text-align:left;color:#172554;text-decoration:none}.branch-name-btn:hover,.branch-name-btn:focus-visible{color:#5b3df5;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -124,12 +181,29 @@ td select{padding:6px;border:1px solid var(--cardb);border-radius:8px;background
  <div class="abox">
   <h2>🏛️ Branch Budget Report</h2>
   <div id="a_form">
-   <input type="text" id="a_name" placeholder="Aapka naam" style="display:none">
-   <input type="email" id="a_email" placeholder="Email" autocomplete="username">
-   <input type="password" id="a_pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')authGo()">
+   <div class="remember-email-wrap">
+    <input type="text" inputmode="email" id="a_email" name="branch_budget_login_email" placeholder="Email" autocomplete="off" autocapitalize="none" spellcheck="false" onfocus="showRememberedEmails()" oninput="showRememberedEmails()" onkeydown="if(event.key==='Escape')hideRememberedEmails()">
+    <div id="rememberedEmails" class="remembered-emails" style="display:none" role="listbox" aria-label="Previously used email addresses"></div>
+   </div>
+   <div class="password-field">
+    <input type="password" id="a_pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')authGo()">
+    <button type="button" id="passwordToggle" class="password-toggle" onclick="toggleLoginPassword()" aria-label="Show password" aria-pressed="false" title="Show password">
+      <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <svg id="eyeClosed" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A11.7 11.7 0 0 1 12 5c6.5 0 10 7 10 7a15 15 0 0 1-3.1 3.9M6.3 6.4C3.5 8.2 2 12 2 12s3.5 7 10 7a10.4 10.4 0 0 0 4.2-.9"/><path d="M10 10a3 3 0 0 0 4 4"/></svg>
+    </button>
+   </div>
    <div class="amsg" id="amsg"></div>
    <button class="btn" id="a_go" onclick="authGo()">Login</button>
-   <a class="lnk" id="a_sw" onclick="authMode()">Naya account banayein</a>
+   <a class="lnk" onclick="forgotPassword()" >Forgot Password?</a>
+  </div>
+  <div id="a_change" style="display:none">
+   <p style="margin:12px 0;font-weight:700">🔐 First Login — Password Change Required</p>
+   <p style="font-size:13px">Temporary password ko apne private password se replace karein. Password badalne ke baad hi report access aage chalega.</p>
+   <div class="password-field"><input type="password" id="new_pw" placeholder="New password (minimum 6 characters)" autocomplete="new-password"><button type="button" class="password-toggle" onclick="togglePasswordField('new_pw',this)" aria-label="Show new password" title="Show password">👁</button></div>
+   <div class="password-field"><input type="password" id="new_pw2" placeholder="Confirm new password" autocomplete="new-password"><button type="button" class="password-toggle" onclick="togglePasswordField('new_pw2',this)" aria-label="Show confirmed password" title="Show password">👁</button></div>
+   <div id="change_msg" class="amsg"></div>
+   <button class="btn" id="change_btn" onclick="changeFirstPassword()">Change Password</button>
+   <a class="lnk" onclick="logout()">Logout</a>
   </div>
   <div id="a_pend" style="display:none">
    <p style="margin-top:14px;font-weight:600;color:var(--ink)">⏳ Aapka account ban gaya hai. Super Admin ke approve karte hi access mil jayega.</p>
@@ -138,28 +212,38 @@ td select{padding:6px;border:1px solid var(--cardb);border-radius:8px;background
   </div>
  </div>
 </div>
+<div id="importModeModal" class="choice-modal" aria-hidden="true">
+ <div class="choice-card" role="dialog" aria-modal="true" aria-labelledby="importModeTitle" aria-describedby="importModeText">
+  <h2 id="importModeTitle">Choose how to save this import</h2>
+  <p id="importModeText">Review the preview, then choose one safe action.</p>
+  <div id="importModeSummary" class="choice-summary"></div>
+  <p><b>Replace</b> downloads a backup first and replaces this report only when one safe atomic save is possible. <b>Merge</b> keeps existing records and adds only exact new rows. <b>Cancel</b> saves nothing.</p>
+  <div class="choice-actions">
+   <button type="button" class="btn g" onclick="settleImportMode('cancel')">Cancel — Save Nothing</button>
+   <button type="button" class="btn" onclick="settleImportMode('merge')">Merge Safely</button>
+   <button type="button" class="btn r" onclick="settleImportMode('replace')">Replace with Backup</button>
+  </div>
+ </div>
+</div>
 <div class="top">
-  <div><h1><i class="lg"></i>Branch Budget Report</h1><p>Donation • Expenses • Fund Position</p></div>
-  <div class="nav"><button id="n2" onclick="go(2)" disabled>Budget</button><button id="n4" onclick="go(4)" disabled>Fund Balance</button><button id="n5" onclick="go(5)" disabled>Undeposit</button><button id="n6" onclick="go(6)">Form</button><button id="n1" class="on" onclick="go(1)">Import</button><button id="n3" onclick="go(3)" style="display:none">Users</button></div>
+  <div class="brand-refresh" role="button" tabindex="0" onclick="refreshCloud()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();refreshCloud()}" title="Refresh report data" aria-label="Refresh report data"><h1><i class="lg"></i>Branch Budget Report</h1><p>Income • Expenses • Fund Position</p></div>
+  <div class="nav"><button id="n7" class="on" onclick="go(7)">Dashboard</button><button id="n2" onclick="go(2)" disabled>Budget</button><button id="n4" onclick="go(4)" disabled>Fund Balance</button><button id="n5" onclick="go(5)" disabled>Undeposit</button><button id="n6" onclick="go(6)">Forms &amp; Documents</button><button id="n1" onclick="go(1)">Import Center</button><button id="n3" onclick="go(3)">Users &amp; Access</button><button id="n10" onclick="go(10)">Settings</button></div>
   <div class="who" id="who"></div>
 </div>
-<div class="lm" id="lm">⚠️ Local mode: Supabase abhi jodi nahi gayi, isliye data sirf is browser me hai. Sabke saath share karne ke liye file ke upar SB_URL aur SB_KEY bhariye.</div>
+<div class="lm" id="lm" style="display:none">⚠️ Local mode: Firebase abhi configure nahi hua, isliye data sirf is browser me hai. Sabke saath share karne ke liye file ke upar Firebase Web API key bhariye.</div>
 <div class="wrap">
-<div id="p1" class="page on">
+<div id="p7" class="page on"><div class="title"><h2>Executive Dashboard</h2><span>Financial overview • Branch monitoring • Exceptions</span></div><div id="dashContent"></div></div>
+<div id="p11" class="page"><div id="branchDetailContent"></div></div>
+<div id="p10" class="page"><div class="title"><h2>Settings</h2><span>Report preferences</span></div><div id="settingsContent"></div></div>
+<div id="p1" class="page">
   <div class="title"><h2>Data Import &amp; Selection</h2></div>
   <div class="tgt"><div class="seg" id="seg"><button data-t="b" class="on" onclick="setT('b')">Budget</button><button data-t="f" onclick="setT('f')">Fund Balance</button><button data-t="u" onclick="setT('u')">Undeposit</button><button data-t="r" onclick="setT('r')">Form</button></div></div>
   <div class="grid3" id="g_bu">
-    <div class="imp" style="--c:#059669"><h2>💰 Donation</h2>
-      <div class="row"><label class="drop">📂 File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('don',this)"></label><button class="btn sm" onclick="clr('don')">🗑️ Clear</button></div>
-      <div class="st" id="s_don"></div></div>
-    <div class="imp" style="--c:#e11d48"><h2>🧾 Expenses</h2>
-      <div class="row"><label class="drop">📂 File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('exp',this)"></label><button class="btn sm" onclick="clr('exp')">🗑️ Clear</button></div>
-      <div class="st" id="s_exp"></div>
+    <div class="imp" style="--c:#059669;grid-column:1/-1"><h2>📊 Income + Expenses Budget Report</h2>
+      <div class="row"><label class="drop">📂 Ek combined Excel/CSV chuniye<input type="file" id="budget_file" multiple accept=".xlsx,.xls,.csv" onchange="loadBudget(this)"></label><button class="btn sm" onclick="clearBudgetInput()">Clear selected file</button></div>
+      <div class="st" id="s_budget"></div><p class="mut">Ek hi file upload karein. Required headings: <b>Account, Month, Branch, Org Department, Income Amount, Expense Amount</b>. Income aur Expenses automatic alag save honge aur Dashboard mein alag dikhenge.</p>
       <div class="rad"><label><input type="radio" name="acc" value="all" checked onchange="ACC=this.value;saveCfg()"> Bank + Cash</label><label><input type="radio" name="acc" value="bank" onchange="ACC=this.value;saveCfg()"> Sirf Bank</label><label><input type="radio" name="acc" value="cash" onchange="ACC=this.value;saveCfg()"> Sirf Cash Account</label></div>
-      </div>
-    <div class="imp" style="--c:#0284c7"><h2>🏦 Fund Position Balance</h2>
-      <div class="row"><label class="drop">📂 File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('fund',this)"></label><button class="btn sm" onclick="clr('fund')">🗑️ Clear</button></div>
-      <div class="st" id="s_fund"></div></div>
+    </div>
   </div>
   <div class="grid3" id="g_f" style="display:none">
     <div class="imp" style="--c:#0284c7"><h2>🏦 ERP Balance</h2>
@@ -168,6 +252,11 @@ td select{padding:6px;border:1px solid var(--cardb);border-radius:8px;background
     <div class="imp" style="--c:#7c3aed"><h2>🗂️ DM Balance</h2>
       <div class="row"><label class="drop">📂 File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('dm',this)"></label><button class="btn sm" onclick="clr('dm')">🗑️ Clear</button></div>
       <div class="st" id="s_dm"></div></div>
+  </div>
+  <div class="grid3" id="g_u" style="display:none">
+    <div class="imp" style="--c:#d97706"><h2>📥 Undeposit Excel Report</h2>
+      <div class="row"><label class="drop">📂 Undeposit File(s) chuniye<input type="file" multiple accept=".xlsx,.xls,.csv" onchange="load('und',this)"></label><button class="btn sm" onclick="clr('und')">🗑️ Clear</button></div>
+      <div class="st" id="s_und"></div><p class="mut">ID, Branch aur Amount Excel se seedhe report mein dikhaye jayenge. Income / Expenses ka hisaab nahi lagega.</p></div>
   </div>
   <div class="grid3" id="g_r" style="display:none">
     <div class="imp" style="--c:#7c3aed"><h2>📎 Form (PDF)</h2>
@@ -182,8 +271,8 @@ td select{padding:6px;border:1px solid var(--cardb);border-radius:8px;background
 <div id="p2" class="page">
   <div id="flt" class="filter">
     <div class="fbar" id="fbar"></div><span class="sp"></span>
-    <span class="upd" id="upd" style="display:none"></span>
-    <button class="btn g pdfb" title="PDF" onclick="window.print()"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#e11d48"/><path d="M14 2v5h5z" fill="#fda4af"/><text x="11.5" y="17" font-size="6.2" font-weight="800" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif">PDF</text></svg></button>
+    <span class="upd" id="upd" style="display:none"></span><button class="btn r sm2 clear-filter-btn" type="button" onclick="clearAllFilters()">🧹 Clear Filters</button>
+    <button class="btn g pdfb" title="Save current report as PDF" aria-label="Save current report as PDF" onclick="printReport()"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#e11d48"/><path d="M14 2v5h5z" fill="#fda4af"/><text x="11.5" y="17" font-size="6.2" font-weight="800" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif">PDF</text></svg></button>
   </div>
   <div id="cap"><div class="title"><h2>Branch Budget Report</h2><span id="sub"></span></div><div id="out"></div></div>
 </div>
@@ -194,17 +283,42 @@ td select{padding:6px;border:1px solid var(--cardb);border-radius:8px;background
 </div>
 <div id="p3" class="page">
   <div class="title"><h2>👥 Users &amp; Access</h2></div>
-  <div class="sec" style="--c:#7c3aed"><h3>Users<small id="ucount"></small></h3><div class="sc" id="ulist"></div></div>
+  <div class="sec" style="--c:#0284c7">
+  <h3>➕ Link Existing Firebase User — Super Admin Only</h3>
+  <div class="sc">
+   <p class="mut" style="margin-bottom:12px">Name, email aur account UID daaliye; branch list uploaded sheets se aayegi. Zaroori branches select karke user link karein.</p>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+    <input id="inv_name" placeholder="Staff full name" aria-label="Staff full name" style="flex:1;min-width:170px" autocomplete="off">
+    <input id="inv_email" type="email" placeholder="Staff email address" aria-label="Staff email" style="flex:1;min-width:190px" autocomplete="off">
+    <input id="inv_uid" placeholder="Account UID" aria-label="Account UID" style="flex:1;min-width:200px" autocomplete="off">
+    <select id="inv_role" aria-label="Staff role"><option value="viewer">Branch Manager — View Only</option></select>
+    <details class="invite-branch-picker" id="inv_branch_picker"><summary id="inv_branch_summary">Select branches from uploaded sheet</summary><div class="invite-branch-panel"><input id="inv_branch_search" type="search" placeholder="Search branch..." aria-label="Search branches" oninput="renderInviteBranchPicker()"><label class="invite-all"><input id="inv_branch_all" type="checkbox" onchange="setInviteAllBranches(this.checked)"> <b>Select all shown</b></label><div id="inv_branch_list" class="invite-branch-list"></div><div class="invite-branch-actions"><button type="button" class="btn sm2 sm" onclick="clearInviteBranches()">Clear selection</button><button type="button" class="btn sm2" onclick="closeInviteBranchPicker()">Done</button></div></div></details>
+    <button class="btn" id="inv_send" onclick="linkExistingUser()">Link Firebase User</button>
+   </div>
+   <p class="mut" id="inv_status" role="status" style="margin-top:10px">Branch Manager sirf assigned branch ka report dekh sakta hai. Import, edit, clear, Users aur Settings access nahi milega. UID Firebase Authentication account se exact match hona chahiye.</p>
+  </div>
+ </div>
+ <div class="sec" style="--c:#7c3aed"><h3>Users<small id="ucount"></small></h3><div class="sc" id="ulist"></div></div>
 </div>
 </div>
 
 <script>
-/* ===== SETUP: Supabase ke URL aur anon key yahan paste kijiye (supabase_setup.sql wali guide dekhiye) ===== */
-const SB_URL='PASTE_SUPABASE_URL_HERE',SB_KEY='PASTE_ANON_KEY_HERE';
-const CLOUD=!SB_URL.includes('PASTE_')&&!SB_KEY.includes('PASTE_');
-let UPD={},D={don:[],exp:[],fund:[],erp:[],dm:[]},U={don:true,exp:true,fund:true},IMP='b',ACC='all',PG=1,FIT=false;
-const ERR={don:[],exp:[],fund:[],erp:[],dm:[]},F={};
-const FKB=[['branch','Branch'],['status','Deposit Status'],['user','User'],['ledger','Ledger']],FKF=[['purpose','Purpose'],['branch','Branch'],['cat','Fund Category']],ALLK=['branch','status','user','ledger','purpose','cat'];
+/* Firebase Web App configuration — Branch Finance Update */
+// Firebase Web App configuration (public identifiers, never a service-account key).
+// Matched to the Firebase Web App Config supplied by the project owner.
+const firebaseConfig={
+ apiKey:'AIzaSyBy6aLsh-4K7bDwA-C37nSH3x-e4P_0-Cg',
+ authDomain:'branch-finance-update.firebaseapp.com',
+ projectId:'branch-finance-update',
+ messagingSenderId:'1054813943505',
+ appId:'1:1054813943505:web:55704ab92c760893a337f0'
+};
+const CLOUD=!firebaseConfig.apiKey.startsWith('PASTE_');
+const SUPER_UID='mKxq65dFRZVkNIFYPPCtPSSn6as1';
+const DIRECT_BRANCH_ACCESS=true;
+let UPD={},D={don:[],exp:[],fund:[],erp:[],dm:[],und:[]},U={don:true,exp:true,fund:true,und:true},IMP='b',ACC='all',PG=7,FIT=false,BD=null,MONTHS={all:true,sel:[]},REPORT_SEARCH='',BUDGET_TAB='don',DATA_VERSION=null,REFRESHING=false;
+const ERR={don:[],exp:[],fund:[],erp:[],dm:[],und:[]},F={};
+const FKB=[['branch','Branch'],['status','Deposit Status'],['user','Department'],['ledger','Account']],FKF=[['purpose','Purpose'],['branch','Branch'],['cat','Fund Category']],ALLK=['branch','status','user','ledger','purpose','cat'];
 let FK=FKB;
 ALLK.forEach(k=>F[k]={all:true,sel:[]});
 const ERPS={branch:['branch','costcenter4'],purpose:['purpose','purposename'],cat:['fundcategory','costsix','fund','category'],balance:['balance','amount']};
@@ -213,26 +327,42 @@ const SPEC={
  don:{branch:['branch'],status:['depositstatus','status'],user:['user','username'],mode:['mode','paymentmode'],amount:['amount']},
  exp:{against:['against','ledger'],branch:['branch'],amount:['amount'],acct:['account','bankaccount','bank','cashbank','bankcash','paidfrom','paymentaccount']},
  erp:ERPS,dm:DMS,
- fund:{bank:['bankaccount','bank'],purpose:['purpose'],cat:['fundcategory','fund','category'],balance:['balance'],branch:['branch']}};
-const REQ={don:['branch','user','mode','amount'],exp:['against','amount'],fund:['bank','balance'],erp:['branch','balance'],dm:['branch','balance']};
+ und:{id:['id','userid','usercode','employeeid','staffid','useridnumber','receiptid','receiptno','userreceiptno','accountid','memberid'],branch:['branch','branchname','costcenter4','costcentre4'],amount:['amount','undepositamount','undepositedamount','balance','pendingdeposit','pendingamount']},
+ fund:{bank:['bankaccount','bank','depositbankname','bankaccountdetails'],purpose:['purpose','purposename'],cat:['fundcategory','fund','category','costsix'],balance:['balance','amount'],branch:['branch','costcenter4','branchname']}};
+ const REQ={don:['branch','user','mode','amount'],exp:['against','amount'],fund:['branch','balance'],erp:['branch','balance'],dm:['branch','balance'],und:['branch','amount']};
 const $=s=>document.getElementById(s);
 const norm=s=>String(s).toLowerCase().replace(/[^a-z0-9]/g,'');
 const N=v=>{if(typeof v==='number')return isFinite(v)?v:0;let t=String(v==null?'':v).replace(/\u2212/g,'-').replace(/[₹,\s\u00a0]/g,'');const neg=/^\(.*\)$/.test(t)||/-$/.test(t)||/^-/.test(t);const x=parseFloat(t.replace(/[^0-9.]/g,''));return isNaN(x)?0:(neg?-x:x)};
+const validMoney=v=>{if(typeof v==='number')return Number.isFinite(v);const x=String(v==null?'':v).trim().replace(/[₹,\s\u00a0]/g,'').replace(/\u2212/g,'-');return /^(?:-?\d+(?:\.\d+)?|\(\d+(?:\.\d+)?\)|\d+(?:\.\d+)?-)$/.test(x)};
 const fmt=n=>'₹ '+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const T=v=>{v=String(v==null?'':v).trim();return v||'—'};
 const uniq=a=>[...new Set(a)].sort();
+const branchKey=value=>{const branch=T(value);if(branch==='—')return '';const match=branch.match(/(?:^|[^A-Za-z0-9])BR\s*[-–—]?\s*0*(\d{3,8})(?:\b|$)/i);return match?'BR-'+match[1].padStart(5,'0'):norm(branch)};
+const knownBranches=()=>uniq(['don','exp','fund','erp','dm','und'].flatMap(type=>(D[type]||[]).map(row=>row.branch)).filter(branch=>branch&&branch!=='—'));
+const canonicalBranch=value=>{const key=branchKey(value);return knownBranches().find(branch=>branchKey(branch)===key)||value};
 const sum=(a,k)=>a.reduce((t,r)=>t+r[k],0);
 
 /* ---------- save / restore (IndexedDB) ---------- */
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('bbr',2);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('s'))d.createObjectStore('s');if(!d.objectStoreNames.contains('pdf'))d.createObjectStore('pdf',{keyPath:'id'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej()});
-async function save(){try{if(CLOUD&&!ME)return;const db=await idb();db.transaction('s','readwrite').objectStore('s').put(CLOUD?{F,PG}:{D,U,ACC,UPD,F,PG},CLOUD?'c2:'+ME.id:'v2')}catch(e){}}
+async function save(){try{if(CLOUD&&(!ME||!ME.active))return;const db=await idb();db.transaction('s','readwrite').objectStore('s').put(CLOUD?{F,PG}:{D,U,ACC,UPD,F,PG},CLOUD?'c2:'+ME.id:'v2')}catch(e){}}
 async function restore(){
   try{const db=await idb();const v=await new Promise(r=>{const q=db.transaction('s').objectStore('s').get('v2');q.onsuccess=()=>r(q.result);q.onerror=()=>r()});
-    if(v){D=v.D;D.erp=D.erp||[];D.dm=D.dm||[];UPD=v.UPD||{};U=v.U;ACC=v.ACC;PG=v.PG;for(const k in v.F)F[k]=v.F[k]}}catch(e){}
+    if(v){D=v.D;D.erp=D.erp||[];D.dm=D.dm||[];D.und=D.und||[];UPD=v.UPD||{};U=v.U;ACC=v.ACC;PG=v.PG;for(const k in v.F)F[k]=v.F[k]}}catch(e){}
   applyU();
   document.querySelector(`input[name=acc][value=${ACC}]`).checked=true;
   chk();go((PG===6||(PG>=2&&PG!==3&&!$('go').disabled))?PG:1);
+}
+const cloudCacheKey=profile=>'cloud-data-v1:'+(profile&&profile.id||'');
+const cloudAccessKey=profile=>[profile&&profile.id||'',profile&&profile.role||'',...((profile&&profile.branches)||[]).map(branchKey).filter(Boolean).sort()].join('|');
+const validCloudData=data=>data&&['don','exp','fund','erp','dm','und'].every(type=>Array.isArray(data[type]));
+async function readCloudCache(version){
+ if(!ME||!version)return null;
+ try{const db=await idb(),value=await new Promise(resolve=>{const q=db.transaction('s').objectStore('s').get(cloudCacheKey(ME));q.onsuccess=()=>resolve(q.result);q.onerror=()=>resolve(null)});return value&&value.version===version&&value.access===cloudAccessKey(ME)&&validCloudData(value.data)?value.data:null}catch(e){return null}
+}
+async function saveCloudCache(version){
+ if(!ME||!version||!validCloudData(D))return;
+ try{const db=await idb();db.transaction('s','readwrite').objectStore('s').put({version,access:cloudAccessKey(ME),data:D,savedAt:Date.now()},cloudCacheKey(ME))}catch(e){}
 }
 
 /* ---------- import ---------- */
@@ -258,76 +388,379 @@ function readBal(wb,type){
   }
   return null;
 }
-async function load(type,inp){
-  const errs=[];let okc=0;
-  if(CLOUD)$('s_'+type).innerHTML='<span class="mut">⏳ Upload ho raha hai, thoda ruk jaiye...</span>';
-  for(const f of inp.files){
-    try{
-      const wb=XLSX.read(await rf(f),{type:'array'});
-      let rows,keys;const spec=SPEC[type],m={},isBal=type==='erp'||type==='dm';
-      if(isBal){const r=readBal(wb,type);if(!r){errs.push(f.name+': heading nahi mili. Chahiye: '+(type==='dm'?'Cost_Center_4, Purpose_Name, Cost_Six, Amount':'Branch, Purpose, Fund Category, Balance'));continue}rows=r.rows;keys=r.keys}
-      else{rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});keys=rows.length?Object.keys(rows[0]):[]}
-      for(const k in spec){for(const al of spec[k]){const c=keys.find(c=>norm(c)===al);if(c!==undefined){m[k]=c;break}}}
-      const miss=REQ[type].filter(k=>m[k]===undefined);
-      if(miss.length){errs.push(f.name+': column nahi mila ('+miss.join(', ')+')');continue}
-      const key=(IMP==='u'?'u::':'')+f.name;const out=rows.map(r=>{const o={src:key};for(const k in spec){const v=m[k]===undefined?'':r[m[k]];o[k]=(k==='amount'||k==='balance')?N(v):T(v)}return o}).filter(o=>isBal?(o.balance&&!(o.branch==='—'&&o.purpose==='—')):(o.amount||o.balance));
-      if(type==='exp')out.forEach(derive);
-      if(CLOUD){if(!await cloudPut(type,key,out,errs))continue}else D[type]=D[type].filter(r=>r.src!==key).concat(out);okc++;
-    }catch(e){errs.push(f.name+': file padh nahi paye')}
+const importSignature=(type,row)=>type+'|'+Object.keys(SPEC[type]).map(k=>{
+  const v=row[k];return (k==='amount'||k==='balance')?String(Number(v)||0):String(v??'').trim().toLowerCase();
+}).join('|');
+function uniqueImportRows(type,rows){const bySignature=new Map();rows.forEach(row=>bySignature.set(importSignature(type,row),row));return [...bySignature.values()]}
+function newMergeRows(type,current,incoming){const known=new Set((current||[]).map(row=>importSignature(type,row)));const added=incoming.filter(row=>!known.has(importSignature(type,row)));return {added,skipped:incoming.length-added.length}}
+function showImportPreview(type,imports,rows,existingCount){
+  const preview=$('importPreview');if(!preview)return;
+  const cols=Object.keys(SPEC[type]).filter(k=>rows.some(r=>r[k]!==undefined));const sample=rows.slice(0,5);
+  preview.innerHTML='<div class="mut"><b>'+esc(TN[IMP]||type)+'</b> • '+imports.length+' file(s) • '+rows.length+' valid unique rows • '+existingCount+' existing '+esc(type.toUpperCase())+' records</div><div class="sc"><table><thead><tr>'+cols.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead><tbody>'+sample.map(r=>'<tr>'+cols.map(k=>'<td>'+esc((k==='amount'||k==='balance')?fmt(r[k]):r[k]??'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><p class="mut">Preview only. Select Replace, Merge, or Cancel in the next step.</p>';
+}
+let importChoiceResolve=null,importChoiceFocus=null;
+function chooseImportMode(type,files,rowCount,existingCount){
+  const modal=$('importModeModal');$('importModeTitle').textContent='Save '+type.toUpperCase()+' import';
+  $('importModeSummary').textContent=files.join(', ')+' • '+rowCount+' validated rows • '+existingCount+' existing records';
+  importChoiceFocus=document.activeElement;modal.classList.add('show');modal.setAttribute('aria-hidden','false');
+  setTimeout(()=>modal.querySelector('button.btn.g').focus(),0);
+  return new Promise(resolve=>{importChoiceResolve=resolve});
+}
+function settleImportMode(mode){
+  const resolve=importChoiceResolve;if(!resolve)return;importChoiceResolve=null;
+  const modal=$('importModeModal');modal.classList.remove('show');modal.setAttribute('aria-hidden','true');
+  if(importChoiceFocus&&typeof importChoiceFocus.focus==='function')importChoiceFocus.focus();importChoiceFocus=null;resolve(mode);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&importChoiceResolve){e.preventDefault();settleImportMode('cancel')}});
+const mappedColumn=(keys,aliases)=>keys.find(column=>aliases.includes(norm(column)));
+function combinedIncomeExpenseMap(keys){
+ const account=mappedColumn(keys,['account','ledger']),branch=mappedColumn(keys,['branch','branchname','costcenter4','costcentre4']),income=mappedColumn(keys,['incomeamount']),expense=mappedColumn(keys,['expenseamount']);
+ if(!account||!branch||!income||!expense)return null;
+ return {account,branch,income,expense,department:mappedColumn(keys,['orgdepartment','department','orgdept'])};
+}
+function combinedBudgetRows(type,file,rows,keys,map){
+ const amountColumn=type==='don'?map.income:map.expense;
+ const bad=rows.map((row,index)=>({row,index})).filter(({row})=>{const raw=row[amountColumn];return raw!==''&&raw!==null&&raw!==undefined&&!validMoney(raw)});
+ if(bad.length)throw Error(bad.length+' invalid '+(type==='don'?'income':'expense')+' amount rows (e.g. row '+(bad[0].index+2)+'). File reject hui; source Excel sudhariye.');
+ const source=(IMP==='u'?'u::':'')+file.name;let previousBranch='—';
+ return rows.map(row=>{
+  const rawColumns={};for(const heading of keys){if(heading&&row[heading]!==undefined)rawColumns[heading]=String(row[heading]??'')}
+  const suppliedBranch=T(row[map.branch]);if(suppliedBranch!=='—')previousBranch=suppliedBranch;
+  const branch=previousBranch,account=T(row[map.account]),amount=N(row[amountColumn]);
+  if(type==='don'){const department=map.department?T(row[map.department]):'—';return {src:source,rawColumns,branch,status:'Not supplied',user:department==='—'?account:department,mode:account,amount};}
+  return {src:source,rawColumns,against:account,branch,amount,acct:'Bank',ledger:account.toUpperCase()};
+ }).filter(row=>row.branch!=='—'&&row.amount!==0);
+}
+function parseCombinedIncomeExpenses(type,file,rows,keys,map){
+ const out=combinedBudgetRows(type,file,rows,keys,map);
+ if(!out.length)throw Error('is report mein valid nonzero '+(type==='don'?'Income Amount':'Expense Amount')+' rows nahi mili.');
+ return {name:file.name,rows:out,sourceRows:rows.length};
+}
+async function parseBudgetFile(file){
+ const wb=XLSX.read(await rf(file),{type:'array'});if(!wb.SheetNames.length)throw Error('worksheet nahi mili');
+ const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}),keys=rows.length?Object.keys(rows[0]):[],map=combinedIncomeExpenseMap(keys);
+ if(!map)throw Error('combined headings nahi mili. Chahiye: Account, Branch, Income Amount, Expense Amount.');
+ const donationRows=combinedBudgetRows('don',file,rows,keys,map),expenseRows=combinedBudgetRows('exp',file,rows,keys,map);
+ if(!donationRows.length&&!expenseRows.length)throw Error('valid nonzero Income Amount ya Expense Amount rows nahi mili.');
+ let previewBranch='—';const previewRows=rows.slice(0,5).map(row=>{const suppliedBranch=T(row[map.branch]);if(suppliedBranch!=='—')previewBranch=suppliedBranch;return {branch:previewBranch,account:T(row[map.account]),income:N(row[map.income]),expense:N(row[map.expense])}});
+ return {name:file.name,donationRows,expenseRows,sourceRows:rows.length,previewRows};
+}
+async function parseImportFile(type,file){
+  const wb=XLSX.read(await rf(file),{type:'array'});if(!wb.SheetNames.length)throw Error('worksheet nahi mili');
+  let rows,keys;const spec=SPEC[type],m={},isBal=type==='erp'||type==='dm';
+  if(isBal){const r=readBal(wb,type);if(!r)throw Error('heading nahi mili. Chahiye: '+(type==='dm'?'Cost_Center_4, Purpose_Name, Cost_Six, Amount':'Branch, Purpose, Fund Category, Balance'));rows=r.rows;keys=r.keys}
+  else{rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});keys=rows.length?Object.keys(rows[0]):[]}
+  const combined=(type==='don'||type==='exp')?combinedIncomeExpenseMap(keys):null;if(combined)return parseCombinedIncomeExpenses(type,file,rows,keys,combined);
+  for(const k in spec){for(const alias of spec[k]){const column=keys.find(c=>norm(c)===alias);if(column!==undefined){m[k]=column;break}}}
+  const missing=REQ[type].filter(k=>m[k]===undefined);if(missing.length)throw Error('column nahi mila ('+missing.join(', ')+')');
+  const moneyKey=(type==='erp'||type==='dm'||type==='fund')?'balance':'amount',moneyColumn=m[moneyKey];
+  const bad=rows.map((row,index)=>({row,index})).filter(({row})=>{const raw=row[moneyColumn];return raw!==''&&raw!==null&&raw!==undefined&&!validMoney(raw)});
+  if(bad.length)throw Error(bad.length+' invalid amount rows (e.g. row '+(bad[0].index+2)+'). File reject hui; source Excel sudhariye.');
+  const source=(IMP==='u'?'u::':'')+file.name;let previousUndepositBranch='—';
+  const out=rows.map((row,index)=>{const parsed={src:source,rawColumns:{}};for(const heading of keys){if(heading&&row[heading]!==undefined)parsed.rawColumns[heading]=String(row[heading]??'')}for(const k in spec){const value=m[k]===undefined?'':row[m[k]];parsed[k]=(k==='amount'||k==='balance')?N(value):T(value)}if(type==='und'){if(parsed.branch!=='—')previousUndepositBranch=parsed.branch;else parsed.branch=previousUndepositBranch;if(parsed.id==='—')parsed.id='Row '+(index+2)}return parsed}).filter(row=>(type==='erp'||type==='dm')?(row.balance&&!(row.branch==='—'&&row.purpose==='—')):type==='und'?(row.branch!=='—'&&validMoney(row.amount)):(row.amount||row.balance));
+  if(type==='exp')out.forEach(derive);if(!out.length)throw Error('koi valid nonzero data row nahi; import reject.');
+  return {name:file.name,rows:out,sourceRows:rows.length};
+}
+function showBudgetPreview(imports,donationRows,expenseRows,existingDonations,existingExpenses){
+ const preview=$('importPreview');if(!preview)return;
+ const sample=imports.flatMap(item=>item.previewRows).slice(0,5);
+ preview.innerHTML='<div class="mut"><b>Combined Budget Report</b> • '+imports.length+' file(s) • '+donationRows.length+' income rows • '+expenseRows.length+' expense rows • '+(existingDonations+existingExpenses)+' existing budget records</div><div class="sc"><table><thead><tr><th>Branch</th><th>Account</th><th class="n">Income Amount</th><th class="n">Expense Amount</th></tr></thead><tbody>'+sample.map(row=>'<tr><td>'+esc(row.branch)+'</td><td>'+esc(row.account)+'</td><td class="n">'+(row.income?fmt(row.income):'–')+'</td><td class="n">'+(row.expense?fmt(row.expense):'–')+'</td></tr>').join('')+'</tbody></table></div><p class="mut">Ek hi upload se Income aur Expenses alag report data mein save honge. Select Replace, Merge, or Cancel in the next step.</p>';
+}
+function budgetStat(){
+ const status=$('s_budget');if(!status)return;
+ const donationRows=rowsOf('don','b'),expenseRows=rowsOf('exp','b'),sources=uniq([...donationRows,...expenseRows].map(row=>row.src));
+ let html='';if(donationRows.length||expenseRows.length)html='<span class="ok">✅ '+sources.length+' file • '+donationRows.length+' income rows • '+expenseRows.length+' expense rows</span><div class="fl">'+sources.map(dn).map(esc).join('<br>')+'</div>';
+ else html='<span class="mut">Abhi koi combined budget file nahi</span>';
+ const errors=[...new Set([...ERR.don,...ERR.exp])];status.innerHTML=html+errors.map(error=>'<div class="bad">❌ '+esc(error)+'</div>').join('');
+}
+function clearBudgetInput(){const input=$('budget_file');if(input)input.value='';ERR.don=[];ERR.exp=[];const status=$('s_budget');if(status)status.innerHTML='<span class="mut">Selected file clear ho gayi. Existing saved budget data safe hai.</span>';}
+async function cloudPutBudget(donationRows,expenseRows,mode,errs){
+ if(!isAdmin()){errs.push('Super Admin access required');return {ok:false}}
+ if(!['replace','merge'].includes(mode)){errs.push('Choose Replace, Merge, or Cancel.');return {ok:false}}
+ try{
+  const [oldDonations,oldExpenses]=await Promise.all([dbCloud.collection(reportCollection.don).get(),dbCloud.collection(reportCollection.exp).get()]);
+  const oldDonationRows=oldDonations.docs.map(doc=>{const value=doc.data();return value.row&&typeof value.row==='object'?value.row:value}),oldExpenseRows=oldExpenses.docs.map(doc=>{const value=doc.data();return value.row&&typeof value.row==='object'?value.row:value});
+  const mergedDonations=mode==='merge'?newMergeRows('don',oldDonationRows,donationRows):null,mergedExpenses=mode==='merge'?newMergeRows('exp',oldExpenseRows,expenseRows):null;
+  const writeDonations=mode==='replace'?donationRows:mergedDonations.added,writeExpenses=mode==='replace'?expenseRows:mergedExpenses.added;
+ const writes=(mode==='replace'?oldDonations.size+oldExpenses.size:0)+writeDonations.length+writeExpenses.length;
+ if(mode==='replace'&&writes>450){errs.push('Refused: Replace needs '+writes+' writes, above the safe atomic limit of 450. No data changed. Use Merge for this large file.');return {ok:false}}
+  if(mode==='replace'){if(oldDonations.size)saveBackup('don',oldDonations.docs);if(oldExpenses.size)saveBackup('exp',oldExpenses.docs);}
+  if(writeDonations.length||writeExpenses.length){
+   const signature=JSON.stringify({mode,donationRows:writeDonations,expenseRows:writeExpenses,stamp:Date.now()});let hash=2166136261;for(let i=0;i<signature.length;i++)hash=Math.imul(hash^signature.charCodeAt(i),16777619);
+  const prefix='budget_'+(hash>>>0).toString(36)+'_'+Date.now().toString(36),donRef=dbCloud.collection(reportCollection.don),expRef=dbCloud.collection(reportCollection.exp);
+  const operations=[...writeDonations.map((row,index)=>({ref:donRef.doc(prefix+'_don_'+index),data:cloudImportDoc('don',row,prefix,index)})),...writeExpenses.map((row,index)=>({ref:expRef.doc(prefix+'_exp_'+index),data:cloudImportDoc('exp',row,prefix,index)}))];
+  if(mode==='replace'){const batch=dbCloud.batch();oldDonations.docs.forEach(doc=>batch.delete(doc.ref));oldExpenses.docs.forEach(doc=>batch.delete(doc.ref));operations.forEach(operation=>batch.set(operation.ref,operation.data));await batch.commit();}
+  else{for(let i=0;i<operations.length;i+=400){const batch=dbCloud.batch();operations.slice(i,i+400).forEach(operation=>batch.set(operation.ref,operation.data));await batch.commit();}}
+   try{await touchReportVersion()}catch(e){errs.push('Budget data saved, but cache version update failed: '+firebaseErrorMessage(e,'Firebase'))}
+   try{await Promise.all([syncStaffProjection('don',null,null,true),syncStaffProjection('exp',null,null,true)])}catch(e){errs.push('Budget data saved, but staff-safe copies were not refreshed: '+firebaseErrorMessage(e,'Firebase')+'. Use Publish Staff Access after checking rules.')}
   }
-  inp.value='';ERR[type]=errs;if(okc&&(type==='erp'||type==='dm')){UPD[type]=Date.now();await saveCfg()}if(CLOUD){try{await loadCloud();await bump()}catch(e){note(e.message)}save();return}stat(type);chk();save();
+  return {ok:true,saved:writeDonations.length+writeExpenses.length,skipped:(mergedDonations?mergedDonations.skipped:0)+(mergedExpenses?mergedExpenses.skipped:0),income:writeDonations.length,expenses:writeExpenses.length};
+ }catch(e){errs.push('Firebase budget '+(mode==='merge'?'Merge stopped; some new rows may already be saved. Press Refresh, then retry safely. Existing records were not deleted. ':'save failed: ')+firebaseErrorMessage(e,'Firebase'));return {ok:false}}
+}
+async function loadBudget(inp){
+ if(CLOUD&&!isAdmin()){inp.value='';return note('Only Super Admin can import cloud financial data.')}
+ const errs=[],imports=[],files=[...inp.files];if(!files.length)return;
+ const status=$('s_budget');if(status)status.innerHTML='<span class="mut">⏳ Combined budget file validate ho rahi hai...</span>';
+ for(const file of files){try{imports.push(await parseBudgetFile(file))}catch(e){errs.push(file.name+': '+(e.message||'file padh nahi paye'))}}
+ const donationRows=uniqueImportRows('don',imports.flatMap(item=>item.donationRows)),expenseRows=uniqueImportRows('exp',imports.flatMap(item=>item.expenseRows));
+ if(CLOUD&&[...donationRows,...expenseRows].some(row=>!row.branch||row.branch==='—'))errs.push('Branch missing. No cloud rows were saved.');
+ if((!donationRows.length&&!expenseRows.length)||errs.length){inp.value='';ERR.don=errs.length?errs:['Koi valid budget row nahi mili'];ERR.exp=ERR.don;budgetStat();return}
+ let existingDonations=(D.don||[]).length,existingExpenses=(D.exp||[]).length;
+ if(CLOUD){try{[existingDonations,existingExpenses]=await Promise.all([dbCloud.collection(reportCollection.don).get().then(snapshot=>snapshot.size),dbCloud.collection(reportCollection.exp).get().then(snapshot=>snapshot.size)])}catch(e){inp.value='';ERR.don=['Existing cloud budget check failed: '+firebaseErrorMessage(e,'Firebase')];ERR.exp=ERR.don;budgetStat();return}}
+ showBudgetPreview(imports,donationRows,expenseRows,existingDonations,existingExpenses);
+ const mode=await chooseImportMode('Budget report',imports.map(item=>item.name),donationRows.length+expenseRows.length,existingDonations+existingExpenses);
+ if(mode==='cancel'){inp.value='';ERR.don=['Import cancelled — no data was changed.'];ERR.exp=ERR.don;budgetStat();return}
+ let result={ok:false};
+ if(CLOUD)result=await cloudPutBudget(donationRows,expenseRows,mode,errs);
+ else if(mode==='replace'){saveLocalBackup('don',D.don||[]);saveLocalBackup('exp',D.exp||[]);D.don=donationRows;D.exp=expenseRows;result={ok:true,income:donationRows.length,expenses:expenseRows.length,saved:donationRows.length+expenseRows.length,skipped:0}}
+ else{const mergedDonations=newMergeRows('don',D.don||[],donationRows),mergedExpenses=newMergeRows('exp',D.exp||[],expenseRows);D.don=(D.don||[]).concat(mergedDonations.added);D.exp=(D.exp||[]).concat(mergedExpenses.added);result={ok:true,income:mergedDonations.added.length,expenses:mergedExpenses.added.length,saved:mergedDonations.added.length+mergedExpenses.added.length,skipped:mergedDonations.skipped+mergedExpenses.skipped}}
+ inp.value='';if(result.ok)note((mode==='replace'?'Replaced ':'Merged ')+result.income+' income + '+result.expenses+' expense rows'+(result.skipped?' • '+result.skipped+' duplicate rows skipped':'')+'.');
+ ERR.don=errs;ERR.exp=errs;if(CLOUD){try{await loadCloud()}catch(e){note('Cloud refresh failed: '+firebaseErrorMessage(e,'Firebase'))}budgetStat();chk();save();return}
+ budgetStat();chk();save();
+}
+async function load(type,inp){
+  if(CLOUD&&!isAdmin()){inp.value='';return note('Only Super Admin can import cloud financial data.')}
+  const errs=[],imports=[];const files=[...inp.files];if(!files.length)return;
+  if(CLOUD)$('s_'+type).innerHTML='<span class="mut">⏳ File validate ho rahi hai...</span>';
+  for(const file of files){try{imports.push(await parseImportFile(type,file))}catch(e){errs.push(file.name+': '+(e.message||'file padh nahi paye'))}}
+  const incoming=uniqueImportRows(type,imports.flatMap(item=>item.rows));
+  if(CLOUD&&incoming.some(row=>!row.branch||row.branch==='—'))errs.push('Branch missing. No cloud rows were saved.');
+  if(!incoming.length||errs.length){inp.value='';ERR[type]=errs.length?errs:['Koi valid import row nahi mili'];stat(type);return}
+  let existingCount=(D[type]||[]).length;
+  if(CLOUD){try{existingCount=(await dbCloud.collection(reportCollection[type]).get()).size}catch(e){inp.value='';ERR[type]=['Existing cloud report check failed: '+firebaseErrorMessage(e,'Firebase')];stat(type);return}}
+  showImportPreview(type,imports,incoming,existingCount);
+  const mode=await chooseImportMode(type,imports.map(item=>item.name),incoming.length,existingCount);
+  if(mode==='cancel'){inp.value='';ERR[type]=['Import cancelled — no data was changed.'];stat(type);return}
+  let result={ok:false};
+  if(CLOUD)result=await cloudPut(type,incoming,mode,errs);
+  else if(mode==='replace'){saveLocalBackup(type,D[type]||[]);D[type]=incoming;result={ok:true,saved:incoming.length,skipped:0}}
+  else{const merged=newMergeRows(type,D[type]||[],incoming);D[type]=(D[type]||[]).concat(merged.added);result={ok:true,saved:merged.added.length,skipped:merged.skipped}}
+  inp.value='';if(result.ok){if(type==='erp'||type==='dm')UPD[type]=Date.now();note((mode==='replace'?'Replaced ':'Merged ')+result.saved+' '+type.toUpperCase()+' row(s)'+(result.skipped?' • '+result.skipped+' duplicate row(s) skipped':'')+'.')}
+  ERR[type]=errs;if(CLOUD){try{await loadCloud()}catch(e){note('Cloud refresh failed: '+firebaseErrorMessage(e,'Firebase'))}stat(type);chk();save();return}
+  stat(type);chk();save();
 }
 function stat(t){
-  const r=(t==='erp'||t==='dm')?D[t]:rowsOf(t,IMP),src=uniq(r.map(x=>x.src));let h='';
+  const r=(t==='erp'||t==='dm'||t==='und')?D[t]:rowsOf(t,IMP),src=uniq(r.map(x=>x.src));let h='';
   if(r.length){h=`<span class="ok">✅ ${src.length} file • ${r.length} rows</span><div class="fl">${src.map(dn).map(esc).join('<br>')}</div>`;
     if(t==='exp'){const k=r.filter(x=>x.ledger).length;h+=`<div class="fl">Exp ledger wali rows: ${k} • hata di gayi: ${r.length-k}</div>`}}
   else h='<span class="mut">Abhi koi file nahi</span>';
   h+=ERR[t].map(e=>`<div class="bad">❌ ${esc(e)}</div>`).join('');
-  $('s_'+t).innerHTML=h;
+  const status=$('s_'+t);if(status)status.innerHTML=h;
 }
 const SFX={2:'',4:'4',5:'5'},TG={2:'b',4:'f',5:'u'},TN={b:'Budget',f:'Fund Balance',u:'Undeposit',r:'Form'};
 const pgOf=x=>String(x).startsWith('u::')?'u':'b',dn=x=>String(x).replace(/^u::/,''),rowsOf=(t,pk)=>D[t].filter(r=>pgOf(r.src)===pk);
-function applyU(){['don','exp','fund','erp','dm'].forEach(stat)}
-function setT(t){IMP=t;document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$('g_bu').style.display=(t==='b'||t==='u')?'':'none';$('g_f').style.display=t==='f'?'':'none';$('g_r').style.display=t==='r'?'':'none';$('act').style.display=t==='r'?'none':'';if(t==='r')fLoad();applyU()}
-function chk(){const ok=D.don.length||D.exp.length||D.fund.length||D.erp.length||D.dm.length;$('go').disabled=!ok;[2,4,5].forEach(i=>$('n'+i).disabled=CLOUD?false:!ok);$('n6').disabled=false}
-const TS=()=>IMP==='f'?['erp','dm']:['don','exp','fund'];
+function applyU(){['don','exp','fund','erp','dm','und'].forEach(stat);budgetStat()}
+function resetImportPreview(t){const preview=$('importPreview');if(!preview)return;const label={b:'Combined Budget Report',f:'ERP or DM Balance Report',u:'Undeposit Report',r:'Form'}[t]||'Report';preview.innerHTML='<span class="mut">'+esc(label)+': no file selected. Choose a new file to preview.</span>'}
+function setT(t){const changed=IMP!==t;IMP=t;document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$('g_bu').style.display=t==='b'?'':'none';$('g_u').style.display=t==='u'?'':'none';$('g_f').style.display=t==='f'?'':'none';$('g_r').style.display=t==='r'?'':'none';$('act').style.display=t==='r'?'none':'';if(changed)resetImportPreview(t);if(t==='r')fLoad();applyU()}
+function chk(){const ok=D.don.length||D.exp.length||D.fund.length||D.erp.length||D.dm.length||D.und.length;$('go').disabled=!ok;[2,4,5].forEach(i=>$('n'+i).disabled=CLOUD?false:!ok);$('n6').disabled=false}
+const TS=()=>IMP==='f'?['erp','dm']:IMP==='u'?['und']:['don','exp','fund'];
+// Admin-only staff-safe projections. They are published only after an explicit admin action.
+const reportCollection={don:'donations',exp:'expenses',fund:'funds',erp:'erpBalances',dm:'dmBalances',und:'undeposits'};
+async function getReportVersion(){
+ try{const snapshot=await dbCloud.collection('reportMeta').doc('current').get();return snapshot.exists&&typeof snapshot.data().version==='string'?snapshot.data().version:null}catch(e){return null}
+}
+async function touchReportVersion(){
+ if(!isAdmin())return null;
+ const version='r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+ await dbCloud.collection('reportMeta').doc('current').set({version,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:auth.currentUser.uid},{merge:true});
+ DATA_VERSION=version;
+ return version;
+}
+function staffSafeRow(row){
+ // Managers receive complete row details only through staff_* copies. Firestore rules limit each read to an assigned branch.
+ const rawColumns=row.rawColumns&&typeof row.rawColumns==='object'?{...row.rawColumns}:{};
+ const safe={branch:String(row.branch||''),purpose:String(row.purpose||''),cat:String(row.cat||''),balance:Number(row.balance||0),amount:Number(row.amount||0),id:String(row.id||''),mode:String(row.mode||''),ledger:String(row.ledger||''),user:String(row.user||''),status:String(row.status||''),src:String(row.src||''),rawColumns};
+ return safe;
+}
+function publicDoc(row,type){return {row:staffSafeRow(row),branch:String(row.branch||''),sourceType:type,updatedAt:firebase.firestore.FieldValue.serverTimestamp()}}
+function projectionJSON(value){if(Array.isArray(value))return '['+value.map(projectionJSON).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+projectionJSON(value[key])).join(',')+'}';return JSON.stringify(value)}
+function sameProjection(existing,wanted){const value=existing.data();return value.branch===wanted.branch&&value.sourceType===wanted.sourceType&&projectionJSON(value.row)===projectionJSON(wanted.row)}
+async function assignedManagerBranches(){
+ const snapshot=await dbCloud.collection('users').get(),branches=new Set();
+ snapshot.docs.forEach(doc=>{const user=doc.data(),perms=user.permissions||{};if(doc.id!==SUPER_UID&&user.role==='viewer'&&user.active===true&&user.approved===true&&perms.viewReports===true&&Array.isArray(user.branches))user.branches.forEach(branch=>{if(typeof branch==='string'&&branch.trim()&&branch!=='—')branches.add(branch)})});
+ return branches;
+}
+async function docsForBranches(ref,branches){
+ const list=[...new Set([...(branches||[])].filter(branch=>typeof branch==='string'&&branch.trim()&&branch!=='—'))];
+ if(!list.length)return [];
+ const snapshots=await Promise.all(Array.from({length:Math.ceil(list.length/10)},(_,i)=>ref.where('branch','in',list.slice(i*10,i*10+10)).get()));
+ const seen=new Set(),docs=[];for(const snapshot of snapshots)for(const doc of snapshot.docs)if(!seen.has(doc.id)){seen.add(doc.id);docs.push(doc)}
+ return docs;
+}
+async function syncStaffProjection(type,managerBranches,onProgress,prune=false){
+ if(DIRECT_BRANCH_ACCESS)return {rows:0,writes:0};
+ if(!isAdmin())return;
+ const privateRef=dbCloud.collection(reportCollection[type]),publicRef=dbCloud.collection('staff_'+reportCollection[type]);
+ const branches=managerBranches||await assignedManagerBranches();
+ const cachedRows=!prune&&Array.isArray(D[type])&&D[type].every(row=>typeof row.__cloudDocId==='string'&&row.__cloudDocId);
+ const [privateDocs,publicDocs]=await Promise.all([cachedRows?Promise.resolve([]):docsForBranches(privateRef,branches),cachedRows&&!prune?Promise.resolve([]):prune?publicRef.get().then(snapshot=>snapshot.docs):docsForBranches(publicRef,branches)]);
+ const sourceRows=cachedRows?D[type].map(row=>({id:row.__cloudDocId,row})):privateDocs.map(d=>{const value=d.data();return {id:d.id,row:value.row&&typeof value.row==='object'?value.row:value}});
+ const wanted=new Map();sourceRows.forEach(({id,row})=>{if(typeof row.branch==='string'&&branches.has(row.branch))wanted.set(id,publicDoc(row,type))});
+ const existing=new Map(publicDocs.map(doc=>[doc.id,doc])),operations=[];if(prune)publicDocs.forEach(d=>{if(!wanted.has(d.id))operations.push({ref:d.ref,del:true})});wanted.forEach((data,id)=>{const previous=existing.get(id);if(cachedRows&&!prune||!previous||!sameProjection(previous,data))operations.push({ref:publicRef.doc(id),data})});
+ if(operations.some(op=>op.del))saveBackup('staff_'+type,publicDocs,'staff-projection');
+ for(let i=0;i<operations.length;i+=350){const batch=dbCloud.batch();operations.slice(i,i+350).forEach(op=>op.del?batch.delete(op.ref):batch.set(op.ref,op.data));await batch.commit();if(onProgress)onProgress(type,Math.min(i+350,operations.length),operations.length,wanted.size)}
+ if(onProgress)onProgress(type,operations.length,operations.length,wanted.size);
+ return {rows:wanted.size,writes:operations.length};
+}
+async function syncAllStaffProjections(onProgress,prune=false){if(!isAdmin())return [];const branches=await assignedManagerBranches(),types=['don','exp','fund','erp','dm','und'],results=[];for(let i=0;i<types.length;i++){const type=types[i];if(onProgress)onProgress(type,0,0,0,i+1,types.length,true);const report=onProgress?(t,done,total,rows)=>onProgress(t,done,total,rows,i+1,types.length,false):null;results.push([type,await syncStaffProjection(type,branches,report,prune)])}return results}
+function downloadBackup(name,data){try{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);return true}catch(e){console.error('Backup could not be created',e);return false}}
+function saveBackup(type,docs,scope='cloud'){return downloadBackup('BBR_BACKUP_'+scope+'_'+type+'_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json',{reportType:type,scope,exportedAt:new Date().toISOString(),records:docs.map(d=>({id:d.id,data:d.data()}))})}
+function saveLocalBackup(type,rows){if(!rows||!rows.length)return true;return downloadBackup('BBR_BACKUP_local_'+type+'_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json',{reportType:type,scope:'local-browser',exportedAt:new Date().toISOString(),records:rows})}
+function confirmCloudDelete(label,count){const phrase='DELETE '+label.toUpperCase();return window.prompt('This will permanently remove '+count+' cloud record(s) from '+label+'. A JSON backup will download first.\n\nType exactly: '+phrase, '')===phrase}
+async function cloudClearType(type,ask=true){
+ if(!isAdmin())throw Error('Only Super Admin can clear reports');
+ const coll=dbCloud.collection(reportCollection[type]);if(!coll)throw Error('Unknown report type');
+ const snap=await coll.get();const docs=snap.docs;
+ if(!docs.length)return {count:0};
+ if(docs.length>450)throw Error('Refused to clear '+docs.length+' records because a safe atomic delete exceeds 450 writes. No data changed. Use a protected server-side archive/delete workflow.');
+ if(ask&&!confirmCloudDelete(type,docs.length))return {cancelled:true,count:0};
+ saveBackup(type,docs);
+ const batch=dbCloud.batch();docs.forEach(d=>batch.delete(d.ref));await batch.commit();
+ let warning='';try{await touchReportVersion()}catch(e){warning=' Cache version update nahi hui: '+firebaseErrorMessage(e,'Firebase')}
+ try{await syncStaffProjection(type,null,null,true)}catch(e){warning+=' Canonical data was cleared, but staff-safe copies need publishing: '+firebaseErrorMessage(e,'Firebase')}
+ return {count:docs.length,warning};
+}
+async function cloudClearTypes(types){
+ if(!isAdmin())throw Error('Only Super Admin can clear reports');
+ const groups=[];for(const type of types){const snap=await dbCloud.collection(reportCollection[type]).get();groups.push({type,docs:snap.docs})}
+ const total=groups.reduce((n,group)=>n+group.docs.length,0);if(!total)return {count:0};
+ if(total>450)throw Error('Refused to clear '+total+' records because a safe atomic delete exceeds 450 writes. No data changed. Clear a small report separately or use a protected server-side archive/delete workflow.');
+ if(!confirmCloudDelete('all selected reports',total))return {cancelled:true,count:0};
+ groups.forEach(group=>{if(group.docs.length)saveBackup(group.type,group.docs)});
+ const batch=dbCloud.batch();groups.forEach(group=>group.docs.forEach(doc=>batch.delete(doc.ref)));await batch.commit();
+ const warnings=[];try{await touchReportVersion()}catch(e){warnings.push('cache version: '+firebaseErrorMessage(e,'Firebase'))}
+ for(const group of groups){try{await syncStaffProjection(group.type,null,null,true)}catch(e){warnings.push(group.type+': '+firebaseErrorMessage(e,'Firebase'))}}
+ return {count:total,warning:warnings.length?' Staff-safe copies need publishing ('+warnings.join('; ')+').':''};
+}
 async function clr(t){
-  if(CLOUD){
-    if(!confirm('Is section ka ('+TN[IMP]+') data sabke liye hat jayega. Aage badhein?'))return;
-    let q=sb.from('bbr_rows').delete().eq('type',t);if(t!=='erp'&&t!=='dm')q=IMP==='u'?q.like('src','u::%'):q.not('src','like','u::%');const {error}=await q;
-    if(error)return note('Clear nahi hua: '+error.message);
-    ERR[t]=[];try{await loadCloud();await bump()}catch(e){note(e.message)}return}
-  D[t]=(t==='erp'||t==='dm')?[]:D[t].filter(r=>pgOf(r.src)!==IMP);if(t==='erp'||t==='dm')delete UPD[t];ERR[t]=[];stat(t);chk();save()}
-async function clrAll(){if(!confirm(''+TN[IMP]+' ka saara data clear ho jayega. Aage badhein?'))return;
-  if(CLOUD){
-    for(const t of TS()){let q=sb.from('bbr_rows').delete().eq('type',t);if(t!=='erp'&&t!=='dm')q=IMP==='u'?q.like('src','u::%'):q.not('src','like','u::%');const {error}=await q;if(error)return note('Clear nahi hua: '+error.message);ERR[t]=[]}
-    ALLK.forEach(k=>F[k]={all:true,sel:[]});try{await loadCloud();await bump()}catch(e){note(e.message)}return}
-TS().forEach(t=>{D[t]=(t==='erp'||t==='dm')?[]:D[t].filter(r=>pgOf(r.src)!==IMP);ERR[t]=[];stat(t)});ALLK.forEach(k=>F[k]={all:true,sel:[]});chk();save()}
+ if(CLOUD){try{const result=await cloudClearType(t);if(!result.cancelled){ERR[t]=[];await loadCloud();renderDashboard();note('Cleared '+result.count+' '+t+' records. Backup downloaded.'+(result.warning||''))}}catch(e){note('Clear failed: '+firebaseErrorMessage(e,'Firebase'))}return}
+ if(!confirm('Is section ka local data clear karein?'))return;
+ saveLocalBackup(t,D[t]||[]);
+ D[t]=(t==='erp'||t==='dm'||t==='und')?[]:D[t].filter(r=>pgOf(r.src)!==IMP);
+ if(t==='erp'||t==='dm')delete UPD[t];ERR[t]=[];stat(t);chk();save();
+}
+async function clrAll(){
+ if(CLOUD){try{const result=await cloudClearTypes(TS());if(!result.cancelled){await loadCloud();renderDashboard();note('Cleared '+result.count+' records. Backups downloaded.'+(result.warning||''))}}catch(e){note('All Clear refused: '+firebaseErrorMessage(e,'Firebase'))}return}
+ if(!confirm(TN[IMP]+' ka local data clear karein?'))return;
+ TS().forEach(t=>{saveLocalBackup(t,D[t]||[]);D[t]=(t==='erp'||t==='dm'||t==='und')?[]:D[t].filter(r=>pgOf(r.src)!==IMP);ERR[t]=[];stat(t)});
+ ALLK.forEach(k=>F[k]={all:true,sel:[]});chk();save();
+}
+async function publishStaffAccess(){
+ if(!isAdmin())return note('Super Admin required');
+ if(!confirm('Publish branch-scoped copies for managers now? This writes the staff_* collections and removes stale copies. Canonical financial records are not changed.'))return;
+ const button=$('publish_staff'),status=$('publish_status');button.disabled=true;status.textContent='Manager branches check ho rahi hain...';
+ try{const names={don:'Income',exp:'Expenses',fund:'Fund',erp:'ERP',dm:'DM',und:'Undeposit'},results=await syncAllStaffProjections((type,done,total,rows,step,steps,starting)=>{status.textContent='Step '+step+'/'+steps+': '+names[type]+' — '+(starting?'preparing assigned-branch rows...':done+'/'+total+' changes saved • '+rows+' assigned-branch rows')});if(!results.length)throw Error('Koi active approved Branch Manager nahi mila');const counts=results.map(([type,result])=>type+': '+result.rows+' rows, '+result.writes+' changes');status.textContent='✅ Branch copies published ('+counts.join(' • ')+').';note('Manager branch access refreshed.')}catch(e){status.textContent='❌ Publishing stopped: '+firebaseErrorMessage(e,'Firebase')+' Canonical data was not changed.'}finally{button.disabled=false}
+}
 
 /* ---------- pages ---------- */
 function go(p){
-  if(CLOUD){if(p===1&&!canEdit())p=2;if(p===3&&!(ME&&ME.role==='admin'))p=2}
-  const pt=TG[PG];PG=p;if(SFX[p]!==undefined){FK=p===4?FKF:FKB;if(pt&&pt!==TG[p])ALLK.forEach(k=>F[k]={all:true,sel:[]});$('p'+p).prepend($('flt'));buildFilters();draw()}
+  if(!CLOUD || !ME || !ME.active || !document.body.classList.contains('session-ready'))return;
+  if(p===8||p===9)return;
+  if(p===3 && (!CLOUD || !ME || !ME.active || !isAdmin())){
+    alert('Admin Access Required\n\nUsers & Access sirf active Super Admin login ke liye hai. Firebase Cloud connect karke Admin account se login karein.');
+    return;
+  }
+  if(CLOUD){if(!ME||!ME.active)return showAuth();if(p===1&&!canEdit())p=2;if(p===3&&!isAdmin())p=2;if(p===10&&!isAdmin())p=7}
+  const pt=TG[PG];PG=p;if(SFX[p]!==undefined){FK=p===4?FKF:FKB;if(pt&&pt!==TG[p]){ALLK.forEach(k=>F[k]={all:true,sel:[]});MONTHS={all:true,sel:[]};REPORT_SEARCH=''}$('p'+p).prepend($('flt'));buildFilters();draw()}
   if(p===3)loadUsers();
+  if(p===7)renderDashboard();if(p===10)renderSettings();if(p===11)renderBranchDetail();
   if(p===6)fLoad();
-  [1,2,3,4,5,6].forEach(i=>{$('p'+i).classList.toggle('on',p===i);$('n'+i).classList.toggle('on',p===i)});
+  [1,2,3,4,5,6,7,10,11].forEach(i=>{const page=$('p'+i),nav=$('n'+i);if(page)page.classList.toggle('on',p===i);if(nav)nav.classList.toggle('on',p===i||(p===11&&i===7))});
   save();refit();
+}
+function openBranchCard(branch){openBranchDetail(branch,'all')}
+const BRANCH_DETAIL_META={don:['Income','#059669','Income entries','amount'],exp:['Expenses','#e11d48','Expense entries','amount'],erp:['ERP','#0284c7','ERP lines','balance'],dm:['DM','#7c3aed','DM lines','balance'],und:['Undeposit','#d97706','Receipts','amount']};
+function branchDetailRows(type){
+ if(!BD)return [];
+ let rows=safeRows(type).filter(r=>branchKey(r.branch)===BD.key);
+ if(type==='don')rows=rows.filter(r=>pgOf(r.src)==='b');
+ if(type==='exp')rows=rows.filter(r=>pgOf(r.src)==='b'&&r.ledger);
+ return rows;
+}
+function branchDetailRecords(type,rows){
+ const meta=BRANCH_DETAIL_META[type];
+ if(!rows.length)return '<div class="record-empty">Is Branch mein '+meta[0]+' ka koi record nahi mila.</div>';
+ if(type==='und')return undepositUserDetailCards(rows,meta[1]);
+ return rows.map((row,index)=>{const ref=detailRecordTitle(row,type);return '<article class="record-card user-tone-'+(index%5)+'" style="--c:'+meta[1]+'"><h5>S.No. '+(index+1)+' • '+esc(ref)+'</h5><div class="record-fields">'+detailRawFields(row,type)+'</div></article>'}).join('');
+}
+function openBranchDetail(branch,tab){
+ const key=branchKey(branch);if(!key)return note('Is Branch ka valid BR code nahi mila');
+ BD={key,label:String(branch),tab:BRANCH_DETAIL_META[tab]?tab:'all'};go(11);
+}
+function selectBranchDetailTab(tab){if(!BD)return;BD.tab=BRANCH_DETAIL_META[tab]?tab:'all';renderBranchDetail();window.scrollTo({top:0,behavior:'smooth'})}
+function renderBranchDetail(){
+ const host=$('branchDetailContent');if(!host||!BD)return;
+ const rows={don:branchDetailRows('don'),exp:branchDetailRows('exp'),erp:branchDetailRows('erp'),dm:branchDetailRows('dm'),und:branchDetailRows('und')};
+ const tab=BD.tab,tabs=[['all','All'],['don','Income'],['exp','Expenses'],['erp','ERP'],['dm','DM'],['und','Undeposit']];
+ const card=(type)=>{const meta=BRANCH_DETAIL_META[type],data=rows[type];return '<button class="k branch-detail-source" style="--c:'+meta[1]+'" type="button" onclick="selectBranchDetailTab(\''+type+'\')"><div>'+meta[0]+'</div><b>'+ (data.length?fmt(sum(data,meta[3])):'No record') +'</b><small>'+data.length+' '+meta[2]+' • Open '+meta[0]+' tab</small></button>'};
+ const stickyTotal=type=>{const meta=BRANCH_DETAIL_META[type],data=rows[type],amount=data.length?fmt(sum(data,meta[3])):'No record';return '<button class="branch-sticky-total" style="--c:'+meta[1]+'" type="button" onclick="selectBranchDetailTab(\''+type+'\')"><span>'+meta[0]+'</span><b>'+amount+'</b></button>'};
+ let content='<div class="branch-detail-shell"><div class="detail-breadcrumb">Dashboard / Branch Detail</div><div class="branch-detail-head"><div><h2>📍 '+esc(BD.label)+'</h2><p>Ek source card click karne par sirf usi source ki original Excel/CSV details khulegi.</p></div><button class="btn g" type="button" onclick="go(7)">Dashboard</button></div><div class="branch-tabs">'+tabs.map(([id,label])=>'<button class="branch-tab '+(tab===id?'on':'')+'" type="button" onclick="selectBranchDetailTab(\''+id+'\')">'+label+'</button>').join('')+'</div><div class="branch-sticky-totals">'+['don','exp','erp','dm','und'].map(stickyTotal).join('')+'</div>';
+ if(tab==='all')content+=['don','exp','erp','dm','und'].map(type=>{const meta=BRANCH_DETAIL_META[type],count=rows[type].length;return sec(meta[1],meta[0]+' Details',count+' '+meta[2],'<div class="record-list">'+branchDetailRecords(type,rows[type])+'</div>')}).join('');
+ else{const meta=BRANCH_DETAIL_META[tab],count=rows[tab].length;content+=sec(meta[1],meta[0]+' Details',count+' '+meta[2],'<div class="record-list">'+branchDetailRecords(tab,rows[tab])+'</div>')}
+ host.innerHTML=content+'</div>';
+ const shell=host.querySelector('.branch-detail-shell'),sticky=document.createElement('div');
+ sticky.className='branch-detail-sticky';
+ ['.detail-breadcrumb','.branch-detail-head','.branch-tabs','.branch-sticky-totals'].forEach(selector=>{const node=shell.querySelector(selector);if(node)sticky.appendChild(node)});
+ shell.insertBefore(sticky,shell.firstChild);
+}
+function clearAllFilters(){
+  ALLK.forEach(k=>F[k]={all:true,sel:[]});
+  ACC='all';MONTHS={all:true,sel:[]};REPORT_SEARCH='';const radio=document.querySelector('input[name=acc][value=all]');if(radio)radio.checked=true;
+  buildFilters();draw();save();note('✅ Saare filters clear ho gaye');
 }
 
 /* ---------- Excel-style multi filter ---------- */
-const hasFB=pk=>rowsOf('fund',pk||TG[PG]||'b').some(r=>r.branch&&r.branch!=='—');
+function monthKeyFromValue(value){
+  const raw=String(value==null?'':value).trim();if(!raw)return '';
+  const serial=Number(raw.replace(/,/g,''));
+  if(Number.isFinite(serial)&&serial>20000&&serial<100000){const date=new Date(Date.UTC(1899,11,30)+serial*86400000);return date.getUTCFullYear()+'-'+String(date.getUTCMonth()+1).padStart(2,'0')}
+  const direct=raw.match(/^(\d{4})[-/]?(\d{1,2})(?:[-/]\d{1,2})?$/);if(direct)return direct[1]+'-'+String(direct[2]).padStart(2,'0');
+  const named=raw.match(/^([A-Za-z]{3,9})[\s\-/]*(\d{2,4})$/);if(named){const names=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'],month=names.indexOf(named[1].slice(0,3).toLowerCase());if(month>=0){let year=Number(named[2]);if(year<100)year+=2000;return year+'-'+String(month+1).padStart(2,'0')}}
+  const parsed=new Date(raw);if(!Number.isNaN(parsed.getTime()))return parsed.getFullYear()+'-'+String(parsed.getMonth()+1).padStart(2,'0');
+  return '';
+}
+function rowMonthKey(row){
+  const raw=row.rawColumns||{},entries=Object.entries(raw),find=aliases=>{const hit=entries.find(([key])=>aliases.includes(norm(key)));return hit?hit[1]:''};
+  return monthKeyFromValue(find(['month']))||monthKeyFromValue(find(['date','crediteddate','depositdate','tcdate','returndate','chaquedate']));
+}
+function pageTypes(){return PG===4?['erp','dm']:PG===5?['und']:['don','exp']}
+function monthChoices(){return uniq(pageTypes().flatMap(type=>safeRows(type).filter(row=>PG!==2||pgOf(row.src)==='b').map(row=>rowMonthKey(row)).filter(Boolean))).sort().reverse()}
+function monthLabel(key){const [year,month]=String(key).split('-').map(Number);return new Date(year,month-1,1).toLocaleString('en-IN',{month:'short',year:'numeric'})}
+const FILTER_ALIASES={branch:['branch','branchname','costcenter4','costcentre4'],status:['depositstatus','status'],user:['orgdepartment','department','orgdept','user','username'],ledger:['account','ledger','against'],purpose:['purpose','purposename'],cat:['fundcategory','fund','category','costsix']};
+function pageFilterRows(){return pageTypes().flatMap(type=>safeRows(type).filter(row=>PG!==2||pgOf(row.src)==='b'))}
+function sheetHasColumn(rows,key){const aliases=FILTER_ALIASES[key]||[];return rows.some(row=>Object.keys(row.rawColumns||{}).some(column=>aliases.includes(norm(column))))}
+function applicableFilterKeys(){
+ const rows=pageFilterRows();
+ if(PG===5)return FK.filter(([key])=>key==='branch');
+ return FK.filter(([key])=>key==='branch'||sheetHasColumn(rows,key));
+}
+function visibleRows(type){return safeRows(type).filter(row=>MONTHS.all||MONTHS.sel.includes(rowMonthKey(row)))}
+function visibleMonths(){const picker=$('ms_month'),input=picker&&picker.querySelector('input[type=text]'),query=input?input.value.trim().toLowerCase():'';return monthChoices().filter(key=>monthLabel(key).toLowerCase().includes(query)||key.includes(query))}
+function isMonthSelected(key){return MONTHS.all||MONTHS.sel.includes(key)}
+function monthButtonLabel(){const picker=$('ms_month');if(!picker)return;const choices=monthChoices(),selected=MONTHS.all?choices:choices.filter(key=>MONTHS.sel.includes(key)),button=picker.querySelector('.msb');if(button)button.textContent=(selected.length===choices.length?'All months':selected.length===1?monthLabel(selected[0]):selected.length+' months selected')+' ▾'}
+function renderMonthList(){const picker=$('ms_month');if(!picker)return;const choices=visibleMonths(),list=picker.querySelector('.msl'),all=picker.querySelector('.msa input');list.innerHTML=choices.map(key=>'<label><input type="checkbox" '+(isMonthSelected(key)?'checked':'')+' data-v="'+esc(key)+'" onchange="setMonths([this.dataset.v],this.checked)">'+esc(monthLabel(key))+'</label>').join('')||'<div class="empty">Koi month nahi mila</div>';if(all)all.checked=choices.length>0&&choices.every(isMonthSelected)}
+function setMonths(list,on){const choices=monthChoices(),selected=MONTHS.all?choices.slice():MONTHS.sel.filter(key=>choices.includes(key));list.forEach(key=>{const index=selected.indexOf(key);if(on&&index<0)selected.push(key);if(!on&&index>=0)selected.splice(index,1)});MONTHS={all:selected.length===choices.length,sel:selected};monthButtonLabel();renderMonthList();draw();save()}
+function selectAllMonths(on){setMonths(visibleMonths(),on)}
+function clearMonths(){MONTHS={all:false,sel:[]};monthButtonLabel();renderMonthList();draw();save()}
+function toggleMonthPicker(event){event.stopPropagation();const picker=$('ms_month');if(!picker)return;const wasOpen=picker.classList.contains('open');document.querySelectorAll('.ms').forEach(item=>item.classList.remove('open'));if(!wasOpen){picker.classList.add('open');picker.querySelector('input[type=text]').value='';renderMonthList()}}
+const hasFB=pk=>visibleRows('fund').filter(r=>pgOf(r.src)===(pk||TG[PG]||'b')).some(r=>r.branch&&r.branch!=='—');
 function vals(k){
-  if(PG===4){let r=[...D.erp,...D.dm];if(k!=='purpose')r=r.filter(x=>isSel('purpose',x.purpose));if(k==='cat')r=r.filter(x=>isSel('branch',x.branch));return uniq(r.map(x=>x[k]))}
-  const R=t=>rowsOf(t,TG[PG]||'b');
-  const g={branch:()=>[...R('don').map(r=>r.branch),...R('exp').filter(r=>r.ledger).map(r=>r.branch),...R('fund').map(r=>r.branch).filter(b=>b!=='—')],
+ if(PG===4){let r=[...visibleRows('erp'),...visibleRows('dm')];if(k!=='purpose')r=r.filter(x=>isSel('purpose',x.purpose));if(k==='cat')r=r.filter(x=>isSel('branch',x.branch));return uniq(r.map(x=>x[k]))}
+ const R=t=>visibleRows(t).filter(r=>pgOf(r.src)===(TG[PG]||'b'));
+  const g={branch:()=>PG===5?visibleRows('und').map(r=>r.branch):[...R('don').map(r=>r.branch),...R('exp').filter(r=>r.ledger).map(r=>r.branch),...R('fund').map(r=>r.branch).filter(b=>b!=='—')],
     status:()=>R('don').map(r=>r.status),user:()=>R('don').map(r=>r.user),ledger:()=>R('exp').filter(r=>r.ledger).map(r=>r.ledger)};
   return uniq(g[k]());
 }
-const isSel=(k,v)=>F[k].all||F[k].sel.includes(v);
+const isSel=(k,v)=>F[k].all||(k==='branch'?F[k].sel.some(x=>branchKey(x)===branchKey(v)):F[k].sel.includes(v));
 function vis(k){const q=$('ms_'+k).querySelector('input[type=text]').value.toLowerCase();return vals(k).filter(x=>x.toLowerCase().includes(q))}
 function buildFilters(){
-  $('fbar').innerHTML=FK.map(([k,l])=>`<div class="fg"><span>${l}</span><div class="ms" id="ms_${k}"><button class="msb" onclick="tog('${k}',event)"></button><div class="msp" onclick="event.stopPropagation()"><input type="text" placeholder="🔍 Search..." oninput="rl('${k}')"><label class="msa"><input type="checkbox" onchange="selAll('${k}',this.checked)"><b>(Select All)</b></label><div class="msl"></div></div></div></div>`).join('');
-  FK.forEach(([k])=>lab(k));
+  const choices=monthChoices(),months=choices;
+  const monthFilter=`<div class="fg month-fg"><span>Month (multiple select)</span><div class="ms" id="ms_month"><button type="button" class="msb" aria-label="Select months" onclick="toggleMonthPicker(event)"></button><div class="msp" onclick="event.stopPropagation()"><input type="text" placeholder="🔍 Search month..." oninput="renderMonthList()"><div class="msa"><span><input type="checkbox" onchange="selectAllMonths(this.checked)"><b>(Select All)</b></span><button type="button" class="mclear" onclick="clearMonths()">Clear</button></div><div class="msl"></div></div></div></div>`;
+  const multi=([k,l])=>`<div class="fg ${k==='branch'?'branch-fg':''}"><span>${k==='branch'?'Select Branches (multiple)':l}</span><div class="ms" id="ms_${k}"><button class="msb" onclick="tog('${k}',event)"></button><div class="msp" onclick="event.stopPropagation()"><input type="text" placeholder="🔍 Search..." oninput="rl('${k}')"><label class="msa"><span><input type="checkbox" onchange="selAll('${k}',this.checked)"><b>(Select All)</b></span><button type="button" class="mclear" onclick="clearSelection('${k}')">Clear</button></label><div class="msl"></div></div></div></div>`;
+  const active=applicableFilterKeys(),branch=active.find(([k])=>k==='branch'),rest=active.filter(([k])=>k!=='branch');
+  $('fbar').innerHTML=(months.length?monthFilter:'')+(branch?multi(branch):'')+rest.map(multi).join('');
+  if(months.length){monthButtonLabel();renderMonthList()}
+  active.forEach(([k])=>lab(k));
 }
 function lab(k){
   const v=vals(k),f=F[k],n=f.all?v.length:v.filter(x=>f.sel.includes(x)).length;
@@ -346,6 +779,7 @@ function setSel(k,list,on){
   lab(k);rl(k);draw();save();
 }
 const selAll=(k,on)=>setSel(k,vis(k),on);
+function clearSelection(k){F[k]={all:false,sel:[]};lab(k);rl(k);draw();save()}
 function tog(k,e){
   e.stopPropagation();const b=$('ms_'+k),was=b.classList.contains('open');
   document.querySelectorAll('.ms').forEach(x=>x.classList.remove('open'));
@@ -355,77 +789,175 @@ document.addEventListener('click',()=>document.querySelectorAll('.ms').forEach(x
 
 /* ---------- tables ---------- */
 function donTable(rows){
-  if(!rows.length)return '<div class="empty">Koi donation data nahi</div>';
-  const modes=uniq(rows.map(r=>r.mode)),users=uniq(rows.map(r=>r.user)),c={};
-  rows.forEach(r=>{const k=r.user+'\u0001'+r.mode;c[k]=(c[k]||0)+r.amount});
-  let h='<div class="sc"><table><thead><tr><th>User</th>'+modes.map(m=>`<th class="n">${esc(m)}</th>`).join('')+'<th class="n">Total</th></tr></thead><tbody>';
-  users.forEach(u=>{let t=0;h+=`<tr><td><b>${esc(u)}</b></td>`+modes.map(m=>{const v=c[u+'\u0001'+m]||0;t+=v;return `<td class="n">${v?fmt(v):'<span class="z">–</span>'}</td>`}).join('')+`<td class="n"><b>${fmt(t)}</b></td></tr>`});
-  return h+'</tbody><tfoot><tr><td>Grand Total</td>'+modes.map(m=>`<td class="n">${fmt(sum(rows.filter(r=>r.mode===m),'amount'))}</td>`).join('')+`<td class="n">${fmt(sum(rows,'amount'))}</td></tr></tfoot></table></div>`;
+  if(!rows.length)return '<div class="empty">Koi income data nahi</div>';
+  const groups=new Map();for(const r of rows){const key=branchKey(r.branch);if(!key)continue;const o=groups.get(key)||{branch:r.branch,records:0,amount:0};if(String(r.branch).length>String(o.branch).length)o.branch=r.branch;o.records++;o.amount+=Number(r.amount)||0;groups.set(key,o)}
+  const a=[...groups.values()].sort((x,y)=>x.branch.localeCompare(y.branch));
+  return '<div class="sc"><table><thead><tr><th class="sno">S.No.</th><th class="branch-sticky">Branch</th><th class="n">Income Entries</th><th class="n">Income Amount</th></tr></thead><tbody>'+a.map((r,i)=>`<tr><td class="sno">${i+1}</td><td class="branch-sticky"><button class="entry-detail-btn branch-name-btn" data-branch="${esc(r.branch)}" onclick="openBranchDetail(this.dataset.branch,'all')">${esc(r.branch)}</button></td><td class="n"><button class="entry-detail-btn" data-branch="${esc(r.branch)}" onclick="openBranchDetail(this.dataset.branch,'don')">View all ${r.records.toLocaleString('en-IN')}</button></td><td class="n">${fmt(r.amount)}</td></tr>`).join('')+`</tbody><tfoot><tr><td colspan="2">Total Income</td><td class="n">${rows.length.toLocaleString('en-IN')}</td><td class="n">${fmt(sum(rows,'amount'))}</td></tr></tfoot></table></div><p class="note">View all button se Income ki har original entry khulegi.</p>`;
 }
 function expTable(rows){
   if(!rows.length)return '<div class="empty">Koi expenses data nahi</div>';
-  const m={};rows.forEach(r=>m[r.ledger]=(m[r.ledger]||0)+r.amount);
-  return '<div class="sc"><table><thead><tr><th>Ledger</th><th class="n">Amount</th></tr></thead><tbody>'+
-   Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td><b>${esc(k)}</b></td><td class="n">${fmt(v)}</td></tr>`).join('')+
-   `</tbody><tfoot><tr><td>Total Expenses</td><td class="n">${fmt(sum(rows,'amount'))}</td></tr></tfoot></table></div>`;
+  const groups=new Map();for(const r of rows){const key=branchKey(r.branch);if(!key)continue;const o=groups.get(key)||{branch:r.branch,records:0,amount:0};if(String(r.branch).length>String(o.branch).length)o.branch=r.branch;o.records++;o.amount+=Number(r.amount)||0;groups.set(key,o)}
+  const a=[...groups.values()].sort((x,y)=>x.branch.localeCompare(y.branch));
+  return '<div class="sc"><table><thead><tr><th class="sno">S.No.</th><th class="branch-sticky">Branch</th><th class="n">Expense Entries</th><th class="n">Expense Amount</th></tr></thead><tbody>'+a.map((r,i)=>`<tr><td class="sno">${i+1}</td><td class="branch-sticky"><button class="entry-detail-btn branch-name-btn" data-branch="${esc(r.branch)}" onclick="openBranchDetail(this.dataset.branch,'all')">${esc(r.branch)}</button></td><td class="n"><button class="entry-detail-btn" data-branch="${esc(r.branch)}" onclick="openBranchDetail(this.dataset.branch,'exp')">View all ${r.records.toLocaleString('en-IN')}</button></td><td class="n">${fmt(r.amount)}</td></tr>`).join('')+`</tbody><tfoot><tr><td colspan="2">Total Expenses</td><td class="n">${rows.length.toLocaleString('en-IN')}</td><td class="n">${fmt(sum(rows,'amount'))}</td></tr></tfoot></table></div><p class="note">View all button se Expense ki har original entry khulegi.</p>`;
 }
+function budgetByBranchTable(don,exp){
+ const groups=new Map(),add=(rows,field)=>{for(const r of rows){const key=branchKey(r.branch);if(!key)continue;const o=groups.get(key)||{branch:r.branch,income:0,expenses:0,incomeEntries:0,expenseEntries:0};if(String(r.branch).length>String(o.branch).length)o.branch=r.branch;o[field]+=Number(r.amount)||0;o[field==='income'?'incomeEntries':'expenseEntries']++;groups.set(key,o)}};
+ add(don,'income');add(exp,'expenses');const a=[...groups.values()].sort((x,y)=>x.branch.localeCompare(y.branch));
+ if(!a.length)return '<div class="empty">Koi branch-wise budget data nahi</div>';
+ return '<div class="sc"><table><thead><tr><th class="sno">S.No.</th><th class="branch-sticky">Branch</th><th class="n">Income</th><th class="n">Expenses</th><th class="n">Surplus / Deficit</th></tr></thead><tbody>'+a.map((r,i)=>{const net=r.income-r.expenses;return `<tr><td class="sno">${i+1}</td><td class="branch-sticky"><b>${esc(r.branch)}</b><br><small>${r.incomeEntries+r.expenseEntries} entries</small></td><td class="n">${r.income?fmt(r.income):'<span class="z">–</span>'}</td><td class="n">${r.expenses?fmt(r.expenses):'<span class="z">–</span>'}</td><td class="n" style="color:${net>=0?'var(--green)':'var(--red)'}"><b>${fmt(net)}</b></td></tr>`}).join('')+`</tbody><tfoot><tr><td colspan="2">Total</td><td class="n">${fmt(sum(a,'income'))}</td><td class="n">${fmt(sum(a,'expenses'))}</td><td class="n">${fmt(sum(a,'income')-sum(a,'expenses'))}</td></tr></tfoot></table></div>`;
+}
+const REPORT_COLUMNS=[{id:'bank',label:'Bank Account',field:'bank'},{id:'branch',label:'Branch',field:'branch'},{id:'purpose',label:'Purpose',field:'purpose'},{id:'cat',label:'Fund Category',field:'cat'},{id:'balance',label:'Balance',field:'balance'}];
+let columnPolicy={defaults:['branch','purpose','cat','balance'],allowed:['branch','purpose','cat','balance']},temporaryColumns=null;
+function allowedColumns(){return isAdmin()?REPORT_COLUMNS.map(c=>c.id):columnPolicy.allowed.filter(x=>x!=='bank')}
+function currentColumns(){return isAdmin()?REPORT_COLUMNS.map(c=>c.id):(temporaryColumns===null?columnPolicy.defaults:temporaryColumns).filter(k=>allowedColumns().includes(k))}
+function toggleTemporaryColumn(k,checked){const a=temporaryColumns===null?[...columnPolicy.defaults]:[...temporaryColumns];temporaryColumns=checked?[...new Set([...a,k])]:a.filter(x=>x!==k);draw()}
+function resetTemporaryColumns(){temporaryColumns=null;draw()}
+function columnControls(){if(isAdmin())return '';return '<div class="note" style="padding:12px 18px"><b>Customize columns (temporary):</b> '+REPORT_COLUMNS.filter(c=>allowedColumns().includes(c.id)).map(c=>'<label style="display:inline-flex;gap:5px;margin:5px 10px 5px 0"><input type="checkbox" '+(currentColumns().includes(c.id)?'checked':'')+' onchange="toggleTemporaryColumn(\''+c.id+'\',this.checked)">'+esc(c.label)+'</label>').join('')+' <button class="btn g sm2" onclick="resetTemporaryColumns()">Reset to Admin Default</button></div>'}
 function fundTable(rows){
-  if(!rows.length)return '<div class="empty">Koi fund data nahi</div>';
-  return '<div class="sc"><table><thead><tr><th>Bank Account</th><th>Purpose</th><th>Fund Category</th><th class="n">Balance</th></tr></thead><tbody>'+
-   rows.map(r=>`<tr><td><b>${esc(r.bank)}</b></td><td>${esc(r.purpose)}</td><td>${esc(r.cat)}</td><td class="n">${fmt(r.balance)}</td></tr>`).join('')+
-   `</tbody><tfoot><tr><td colspan="3">Total Fund</td><td class="n">${fmt(sum(rows,'balance'))}</td></tr></tfoot></table></div>`;
+ if(!rows.length)return '<div class="empty">Koi fund data nahi</div>';
+ const ids=currentColumns(),cols=REPORT_COLUMNS.filter(c=>ids.includes(c.id));
+ const rawExtra=[...new Set(rows.flatMap(r=>Object.keys(r.rawColumns||{})))].filter(x=>!REPORT_COLUMNS.some(c=>norm(c.label)===norm(x)));
+ // Extra imported fields are only shown to Super Admin until their field-level authorization is configured.
+ if(isAdmin())rawExtra.forEach(x=>cols.push({id:'extra:'+x,label:x,field:x}));
+ const h='<div class="sc"><table><thead><tr><th class="sno">S.No.</th>'+cols.map(c=>'<th'+(c.id==='balance'?' class="n"':'')+'>'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>';
+ return columnControls()+h+rows.map((r,i)=>'<tr><td class="sno">'+(i+1)+'</td>'+cols.map(c=>'<td'+(c.id==='balance'?' class="n"':'')+'>'+esc(c.id==='balance'?fmt(r.balance):(c.id.startsWith('extra:')?(r.rawColumns||{})[c.field]:r[c.field])??'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><div class="note">Total Fund: <b>'+fmt(sum(rows,'balance'))+'</b></div>';
 }
+const EXCEL_SOURCES=[['don','Income'],['exp','Expenses'],['erp','ERP'],['dm','DM'],['und','Undeposit']];
+let excelColumnPolicy={hidden:[],nonDefault:[]};
+function excelColumnId(type,label){return type+'::'+norm(label)}
+function excelColumnGroups(){return EXCEL_SOURCES.map(([type,title])=>{const seen=new Map();safeRows(type).forEach(row=>Object.keys(row.rawColumns||{}).forEach(label=>{if(String(label).trim()&&!seen.has(norm(label)))seen.set(norm(label),String(label).trim())}));return {type,title,columns:[...seen.values()].map(label=>({type,label,id:excelColumnId(type,label)}))}}).filter(group=>group.columns.length)}
+function isExcelColumnAllowed(type,label){return !excelColumnPolicy.hidden.includes(excelColumnId(type,label))}
+function isExcelColumnDefault(type,label){const id=excelColumnId(type,label);return isExcelColumnAllowed(type,label)&&!excelColumnPolicy.nonDefault.includes(id)}
+async function loadColumnPolicy(){try{const d=await dbCloud.collection('reportSettings').doc('columnVisibility').get();if(!d.exists)return;const p=d.data().excel||d.data();if(Array.isArray(p.hidden)||Array.isArray(p.nonDefault))excelColumnPolicy={hidden:Array.isArray(p.hidden)?p.hidden:[],nonDefault:Array.isArray(p.nonDefault)?p.nonDefault:[]}}catch(e){if(isAdmin())note('Column settings could not load: '+(e.code||e.message))}}
+async function saveColumnPolicy(){if(!isAdmin())return;const columns=excelColumnGroups().flatMap(group=>group.columns);if(!columns.length)return note('Pehle Excel sheet upload karein; tabhi uske columns ki setting save hogi.');const allowed=new Set([...document.querySelectorAll('[data-col-allowed]:checked')].map(input=>input.value)),defaults=new Set([...document.querySelectorAll('[data-col-default]:checked')].map(input=>input.value));const hidden=columns.filter(column=>!allowed.has(column.id)).map(column=>column.id),nonDefault=columns.filter(column=>allowed.has(column.id)&&!defaults.has(column.id)).map(column=>column.id);try{await dbCloud.collection('reportSettings').doc('columnVisibility').set({excel:{hidden,nonDefault},updatedBy:auth.currentUser.uid,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});excelColumnPolicy={hidden,nonDefault};note('Excel column defaults save ho gaye. Naye upload ke naye columns default Yes rahenge.');renderSettings();draw()}catch(e){note('Column settings save nahi hui: '+(e.code||e.message))}}
+function columnSettingsPanel(){if(!isAdmin())return '';const groups=excelColumnGroups();if(!groups.length)return sec('#0284c7','Excel Column Visibility','Super Admin','<div class="empty">Pehle Income, Expense, ERP, DM ya Undeposit ki Excel upload karein. Upload hui sheet ki asli headings yahin apne aap dikhengi.</div>');const rows=groups.map(group=>'<tr><td colspan="3" style="background:#f5f3ff;color:#4f46e5;font-weight:800">'+esc(group.title)+' Excel</td></tr>'+group.columns.map(column=>'<tr><td>'+esc(column.label)+'</td><td><input type="checkbox" data-col-allowed value="'+esc(column.id)+'" '+(isExcelColumnAllowed(column.type,column.label)?'checked':'')+'></td><td><input type="checkbox" data-col-default value="'+esc(column.id)+'" '+(isExcelColumnDefault(column.type,column.label)?'checked':'')+'></td></tr>').join('')).join('');return sec('#0284c7','Excel Column Visibility','Super Admin','<div class="note">Yahan sirf uploaded Excel ki headings aati hain. Jo columns manager ab dekh raha hai, woh default <b>Yes</b> hain. Nayi Excel mein koi naya column aayega to woh bhi default Yes rahega.</div><div class="sc"><table><thead><tr><th>Excel column</th><th>Manager ko dikhana</th><th>Default Yes</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="act" style="padding:0 18px 18px"><button class="btn" onclick="saveColumnPolicy()">Save Excel Defaults</button></div>')}
+
 const sec=(c,t,s,b)=>`<div class="sec" style="--c:${c}"><h3>${t}<small>${s}</small></h3>${b}</div>`;
+function branchFiveSourceSummary(label,don,exp,erp,dm,und){
+ const card=(type,name,rows,field,color,unit)=>`<button class="k source-detail-card" style="--c:${color}" type="button" ${rows.length?'':'disabled'} onclick="openBranchSourceDetails('${type}')"><div>${name}</div><b>${rows.length?fmt(sum(rows,field)):'No record'}</b><small>${rows.length?'Click karke '+rows.length+' '+unit+' ki full Excel detail dekhein':'Is Branch ka record nahi mila'}</small></button>`;
+ return sec('#2563eb','📍 Complete Branch Detail',esc(label)+' • Kisi bhi color card par click karke original Excel/CSV rows dekhein','<div class="sum">'+card('don','Income',don,'amount','#059669','entries')+card('exp','Expenses',exp,'amount','#e11d48','entries')+card('erp','ERP',erp,'balance','#0284c7','lines')+card('dm','DM',dm,'balance','#7c3aed','lines')+card('und','Undeposit',und,'amount','#d97706','receipts')+'</div><div id="branchSourceDetails" class="branch-source-details"></div>');
+}
+function selectedSourceRows(type){
+ let rows=visibleRows(type).filter(r=>isSel('branch',r.branch));
+ if(type==='don')rows=rows.filter(r=>pgOf(r.src)==='b'&&isSel('status',r.status)&&isSel('user',r.user));
+ if(type==='exp')rows=rows.filter(r=>pgOf(r.src)==='b'&&r.ledger&&isSel('ledger',r.ledger)&&(ACC==='all'||(ACC==='cash')===(r.acc==='Cash')));
+ return rows;
+}
+function formattedExcelDate(value){
+ const n=Number(String(value==null?'':value).replace(/,/g,''));
+ if(Number.isFinite(n)&&n>20000&&n<100000){const d=new Date(Date.UTC(1899,11,30)+n*86400000),pad=x=>String(x).padStart(2,'0');let h=d.getUTCHours(),ampm=h>=12?'PM':'AM';h=h%12||12;return pad(d.getUTCDate())+' '+d.toLocaleString('en-IN',{month:'short',timeZone:'UTC'})+' '+d.getUTCFullYear()+', '+pad(h)+':'+pad(d.getUTCMinutes())+' '+ampm}
+ return T(value);
+}
+function rawFieldValue(row,aliases){const item=Object.entries(row.rawColumns||{}).find(([key])=>aliases.includes(norm(key)));return item?item[1]:''}
+function detailRecordTitle(row,type){
+ const account=rawFieldValue(row,['account']);
+ if(type==='don'||type==='exp')return account||row.mode||row.against||row.ledger||'Entry';
+ return row.mode||row.against||row.ledger||'Entry';
+}
+function detailRawFields(row,type){
+ const raw=Object.entries(row.rawColumns||{}),find=aliases=>rawFieldValue(row,aliases);
+  if(raw.length){
+   const fields=raw.filter(([label])=>isAdmin()||isExcelColumnDefault(type,label));
+   const valueFor=(label,value)=>{const key=norm(label);if(/date$|dateof|crediteddate|depositdate|tcdate|returndate|chaquedate/.test(key))return formattedExcelDate(value);if(/amount|balance|incomeamount|expenseamount|undeposit|pendingdeposit|pendingamount/.test(key)&&String(value).trim())return fmt(N(value));return T(value)};
+   return fields.length?fields.map(([label,value])=>'<div class="record-field"><span>'+esc(label)+'</span><b>'+esc(valueFor(label,value))+'</b></div>').join(''):'<div class="record-empty">Is source ke koi Excel column manager ke default view ke liye selected nahi hain.</div>';
+  }
+ if(type==='don'||type==='exp'){
+  const wanted=type==='don'?
+   [['Account',['account']],['Month',['month']],['Branch',['branch']],['Org Department',['orgdepartment','department','orgdept']],['Income Amount',['incomeamount']]]:
+   [['Account',['account']],['Month',['month']],['Branch',['branch']],['Org Department',['orgdepartment','department','orgdept']],['Expense Amount',['expenseamount']]];
+  return wanted.map(([label,aliases])=>{let value=find(aliases);if(label==='Account'&&!String(value).trim())value=type==='don'?row.mode:row.against;if(label==='Branch'&&!String(value).trim())value=row.branch;if((label==='Income Amount'||label==='Expense Amount')&&String(value).trim())value=fmt(N(value));return '<div class="record-field"><span>'+esc(label)+'</span><b>'+esc(T(value))+'</b></div>'}).join('');
+ }
+ if(type==='und'){
+  const wanted=[
+   ['Mode',['mode']],['User City',['usercity']],['Branch',['branch']],['Employee Code',['empcode','employeecode']],['Receipt No',['receiptno']],['Purpose',['purpose']],['Date',['date']],['Department',['department']],['Sub Type',['subtype']],['Main Type',['maintype']],['Division Name',['divname','divisionname']],['Amount',['amount']]
+  ];
+  return wanted.map(([label,aliases])=>{let value=find(aliases);if(label==='Branch'&&!String(value).trim())value=row.branch;if(label==='Date')value=formattedExcelDate(value);if(label==='Amount'&&String(value).trim())value=fmt(N(value));return '<div class="record-field"><span>'+esc(label)+'</span><b>'+esc(T(value))+'</b></div>'}).join('');
+ }
+ if(type==='erp'||type==='dm'){
+  const wanted=type==='erp'?
+   [['Bank Account',['bankaccount']],['Branch',['branch']],['Purpose',['purpose']],['Fund Category',['fundcategory']],['Balance',['balance']]]:
+   [['Purpose',['purposename']],['Branch',['costcenter4','branch']],['Fund Category',['costsix','fundcategory']],['Amount',['amount','balance']],['Deposit Bank Name',['depositbankname']]];
+  return wanted.map(([label,aliases])=>{let value=find(aliases);if(label==='Branch'&&!String(value).trim())value=row.branch;if((label==='Balance'||label==='Amount')&&String(value).trim())value=fmt(N(value));return '<div class="record-field"><span>'+esc(label)+'</span><b>'+esc(T(value))+'</b></div>'}).join('');
+ }
+ const fieldRows=raw.length?raw:[[type==='und'?'Receipt No':'Branch',type==='und'?row.id:row.branch],['Branch',row.branch],['Amount / Balance',type==='erp'||type==='dm'?row.balance:row.amount]];
+ const hasBranch=raw.some(([key])=>norm(key)==='branch');
+ if(hasBranch&&!String(raw.find(([key])=>norm(key)==='branch')[1]||'').trim()&&row.branch)fieldRows.unshift(['Mapped Branch',row.branch]);
+ return fieldRows.map(([key,value])=>'<div class="record-field"><span>'+esc(key)+'</span><b>'+esc(T(value))+'</b></div>').join('');
+}
+function undepositUserDetailCards(rows,color){
+ const groups=new Map();for(const row of rows){const user=T(rawFieldValue(row,['user'])),key=norm(user)||String(row.id||Math.random());const group=groups.get(key)||{user,rows:[]};group.rows.push(row);groups.set(key,group)}
+ return [...groups.values()].map((group,index)=>{const mobile=group.rows.map(row=>rawFieldValue(row,['usermobile','mobile'])).find(value=>String(value).trim())||'—';return '<article class="record-card user-tone-'+(index%5)+'" style="--c:'+color+'"><h5>S.No. '+(index+1)+' • '+esc(group.user)+'<span class="user-mobile-head">• Mobile No: <b>'+esc(mobile)+'</b></span><small>'+group.rows.length+' receipt'+(group.rows.length===1?'':'s')+' • Total: '+fmt(sum(group.rows,'amount'))+'</small></h5><div class="user-receipts">'+group.rows.map((row,receiptIndex)=>{const receipt=rawFieldValue(row,['receiptno'])||row.id||'Receipt number nahi mila';return '<section class="receipt-detail receipt-tone-'+(receiptIndex%5)+'"><div class="receipt-detail-head">Receipt '+(receiptIndex+1)+' • '+esc(receipt)+'</div><div class="record-fields">'+detailRawFields(row,'und')+'</div></section>'}).join('')+'</div></article>'}).join('');
+}
+function openBranchSourceDetails(type){
+ const host=$('branchSourceDetails'),meta={don:['Income Details','#059669','Income entry'],exp:['Expense Details','#e11d48','Expense entry'],erp:['ERP Details','#0284c7','ERP line'],dm:['DM Details','#7c3aed','DM line'],und:['Undeposit Receipt Details','#d97706','Receipt']}[type];
+ if(!host||!meta)return;
+ const rows=selectedSourceRows(type),branch=F.branch.all?'All selected branches':(F.branch.sel.length===1?F.branch.sel[0]:F.branch.sel.length+' selected branches');
+ const title=type==='und'?'Receipt No. / original CSV details':'Original Excel row details';
+ host.innerHTML='<div class="sec" style="--c:'+meta[1]+'"><div class="branch-source-head"><h4>'+meta[0]+' • '+esc(branch)+'</h4><button class="btn g sm2" type="button" onclick="$(\'branchSourceDetails\').innerHTML=\'\'">✕ Close details</button></div><div class="note">'+title+' • '+rows.length+' '+meta[2]+(rows.length===1?'':'s')+'</div><div class="record-list">'+(rows.length?(type==='und'?undepositUserDetailCards(rows,meta[1]):rows.map((row,index)=>{const ref=detailRecordTitle(row,type);return '<article class="record-card" style="--c:'+meta[1]+'"><h5>S.No. '+(index+1)+' • '+esc(ref)+'</h5><div class="record-fields">'+detailRawFields(row,type)+'</div></article>'}).join('')):'<div class="record-empty">Is Branch mein '+meta[0]+' ka koi record nahi mila.</div>')+'</div></div>';
+ host.scrollIntoView({behavior:'smooth',block:'start'});
+}
 
 function balAgg(rows){
-  const m=new Map();rows.forEach(r=>{const k=[r.purpose,r.cat].join('\u0001');const o=m.get(k)||{purpose:r.purpose,cat:r.cat,balance:0};o.balance+=r.balance;m.set(k,o)});
-  return [...m.values()].sort((a,b)=>a.purpose.localeCompare(b.purpose)||a.cat.localeCompare(b.cat));
+ const m=new Map();rows.forEach(r=>{const k=[branchKey(r.branch),r.purpose,r.cat].join('\u0001');const o=m.get(k)||{branch:r.branch,purpose:r.purpose,cat:r.cat,balance:0};o.balance+=Number(r.balance)||0;m.set(k,o)});
+ return [...m.values()].sort((a,b)=>a.branch.localeCompare(b.branch)||a.purpose.localeCompare(b.purpose)||a.cat.localeCompare(b.cat));
 }
 function balTable(rows,label){
   if(!rows.length)return '<div class="empty">Koi '+label+' data nahi</div>';
   const a=balAgg(rows);
-  return '<div class="sc"><table><thead><tr><th>Purpose</th><th>Fund Category</th><th class="n">Balance</th></tr></thead><tbody>'+
-   a.map(r=>`<tr><td><b>${esc(r.purpose)}</b></td><td>${esc(r.cat)}</td><td class="n">${fmt(r.balance)}</td></tr>`).join('')+
-   `</tbody><tfoot><tr><td colspan="2">Total ${label}</td><td class="n">${fmt(sum(rows,'balance'))}</td></tr></tfoot></table></div>`;
+ return '<div class="sc fund-balance-table"><table><thead><tr><th class="sno">S.No.</th><th class="branch-sticky">Branch</th><th>Purpose</th><th>Fund Category</th><th class="n">Balance</th></tr></thead><tbody>'+
+  a.map((r,i)=>`<tr><td class="sno">${i+1}</td><td class="branch-sticky"><b>${esc(r.branch)}</b></td><td>${esc(r.purpose)}</td><td>${esc(r.cat)}</td><td class="n">${fmt(r.balance)}</td></tr>`).join('')+
+  `</tbody><tfoot><tr><td colspan="4">Total ${label}</td><td class="n">${fmt(sum(rows,'balance'))}</td></tr></tfoot></table></div>`;
 }
 const fdt=t=>new Date(t).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+function undepositByBranch(rows){
+ const groups=new Map();for(const row of rows){const key=branchKey(row.branch);if(!key)continue;const group=groups.get(key)||{branch:row.branch,records:0,amount:0};if(String(row.branch).length>String(group.branch).length)group.branch=row.branch;group.records++;group.amount+=Number(row.amount)||0;groups.set(key,group)}
+ return [...groups.values()].sort((a,b)=>a.branch.localeCompare(b.branch));
+}
+function undepositTable(rows){
+ if(!rows.length)return '<div class="sec" style="--c:#d97706"><div class="empty">Abhi Undeposit Excel data nahi hai. Import Center → Undeposit mein Excel upload karein.</div></div>';
+ const grouped=undepositByBranch(rows);
+ return '<div class="sec" style="--c:#d97706"><h3>Undeposit by Branch <small>'+grouped.length+' branches • '+rows.length+' receipts</small></h3><div class="sc"><table><thead><tr><th class="sno">S.No.</th><th class="branch-sticky">Branch</th><th class="n">Receipt Entries</th><th class="n">Undeposited Amount</th></tr></thead><tbody>'+grouped.map((row,i)=>'<tr><td class="sno">'+(i+1)+'</td><td class="branch-sticky"><b>'+esc(row.branch)+'</b></td><td class="n">'+row.records.toLocaleString('en-IN')+'</td><td class="n">'+fmt(row.amount)+'</td></tr>').join('')+'</tbody><tfoot><tr><td colspan="2">Total Undeposit</td><td class="n">'+rows.length.toLocaleString('en-IN')+'</td><td class="n">'+fmt(sum(grouped,'amount'))+'</td></tr></tfoot></table></div></div>';
+}
+function setBudgetTab(tab){if(!['don','exp','summary'].includes(tab))return;BUDGET_TAB=tab;draw()}
+function budgetSourceTabs(){return '<div class="budget-source-tabs" role="tablist" aria-label="Budget report tabs">'+[['don','Income'],['exp','Expenses'],['summary','Budget Summary']].map(([id,label])=>'<button type="button" role="tab" aria-selected="'+(BUDGET_TAB===id?'true':'false')+'" class="'+(BUDGET_TAB===id?'on':'')+'" onclick="setBudgetTab(\''+id+'\')">'+label+'</button>').join('')+'</div>'}
+function printReport(){window.print()}
 function draw(){
+  if(PG===7){renderDashboard();refit();return;}
+  if(PG===11){renderBranchDetail();refit();return;}
   const sub=FK.filter(([k])=>!F[k].all).map(([k,l])=>l+': '+(vals(k).filter(x=>F[k].sel.includes(x)).join(', ')||'None'));
   if(ACC!=='all')sub.push('Expenses: '+(ACC==='cash'?'Cash Account':'Bank'));
+  if(!MONTHS.all)sub.push('Month: '+(MONTHS.sel.length===1?monthLabel(MONTHS.sel[0]):MONTHS.sel.length+' selected'));
+  if(REPORT_SEARCH.trim())sub.push('Search: '+REPORT_SEARCH.trim());
   const subtxt=sub.join(' • ')||'All Branches • Complete Data';
   [['b','',2],['u','5',5]].forEach(([pk,sx])=>{
     $('sub'+sx).textContent=subtxt;
-    const R=t=>rowsOf(t,pk),fb=hasFB(pk);
+    if(pk==='u'){const und=visibleRows('und').filter(r=>isSel('branch',r.branch));$('out'+sx).innerHTML=undepositTable(und);return;}
+   const R=t=>visibleRows(t).filter(r=>pgOf(r.src)===pk),fb=hasFB(pk);
     const don=R('don').filter(r=>isSel('branch',r.branch)&&isSel('status',r.status)&&isSel('user',r.user));
     const exp=R('exp').filter(r=>r.ledger&&isSel('branch',r.branch)&&isSel('ledger',r.ledger)&&(ACC==='all'||(ACC==='cash')===(r.acc==='Cash')));
-    const fund=R('fund').filter(r=>!fb||isSel('branch',r.branch));
-    const on=k=>R(k).length>0;
-    const inc=on('don')?sum(don,'amount'):0,ex=on('exp')?sum(exp,'amount'):0,fd=on('fund')?sum(fund,'balance'):0,net=inc-ex;
-    let h='',t='';
-    if(!on('don')&&!on('exp')&&!on('fund'))h='<div class="sec" style="--c:#64748b"><div class="empty">'+(pk==='b'?'Abhi Budget ke liye koi data nahi hai.':'Abhi Undeposit ke liye koi data nahi hai.')+' Import me "'+TN[pk]+'" chun kar file daaliye.</div></div>';
-    else{
-      if(on('don'))h+=sec('#059669','💰 Donation Report',don.length+' entries',donTable(don));
-      if(on('exp'))t+=sec('#e11d48','🧾 Expenses Report',(ACC==='cash'?'Cash Account • ':ACC==='bank'?'Bank • ':'')+exp.length+' entries',expTable(exp));
-      if(on('fund'))t+=sec('#0284c7','🏦 Fund Position Balance',fund.length+' accounts',fundTable(fund)+(!fb&&!F.branch.all?'<div class="note">Fund file me Branch column nahi hai, isliye saari branch ka fund dikh raha hai.</div>':''));
-      if(t)h+=`<div class="two">${t}</div>`;
-      if(pk==='b')h+=`<div class="sum">
-   <div class="k" style="--c:#059669"><div>Total Income (Donation)</div><b>${fmt(inc)}</b></div>
+    const inc=sum(don,'amount'),ex=sum(exp,'amount'),net=inc-ex;
+    const summaryBlock=()=>{
+      const branchCount=new Set([...don,...exp].map(r=>branchKey(r.branch)).filter(Boolean)).size;
+      return sec('#2563eb','📍 Branch-wise Budget Summary',branchCount+' branches • repeated entries combined',budgetByBranchTable(don,exp))+`<div class="sum">
+   <div class="k" style="--c:#059669"><div>Total Income</div><b>${fmt(inc)}</b></div>
    <div class="k" style="--c:#e11d48"><div>Total Expenses</div><b>${fmt(ex)}</b></div>
-   <div class="k" style="--c:#0284c7"><div>Fund Available</div><b>${fmt(fd)}</b></div>
    <div class="k" style="--c:${net>=0?'#059669':'#e11d48'}"><div>${net>=0?'Surplus':'Deficit'} (Income − Expenses)</div><b>${fmt(Math.abs(net))}</b></div></div>
-   <div class="res ${net>=0?'pos':'neg'}"><span>${net>=0?'✅ Surplus':'⚠️ Deficit'}: ${fmt(Math.abs(net))}</span><span>Fund Available: ${fmt(fd)}</span></div>`;
-      else h+='<div class="sum">'+(on('don')?`<div class="k" style="--c:#059669"><div>Donation Total</div><b>${fmt(inc)}</b></div>`:'')+(on('exp')?`<div class="k" style="--c:#e11d48"><div>Expenses Total</div><b>${fmt(ex)}</b></div>`:'')+(on('fund')?`<div class="k" style="--c:#0284c7"><div>Fund Total</div><b>${fmt(fd)}</b></div>`:'')+'</div>';
-    }
+   <div class="res ${net>=0?'pos':'neg'}"><span>${net>=0?'✅ Surplus':'⚠️ Deficit'}: ${fmt(Math.abs(net))}</span></div>`;
+    };
+    let h=budgetSourceTabs();
+    if(BUDGET_TAB==='don')h+=sec('#059669','💰 Income Report',don.length+' entries',don.length?donTable(don):'<div class="empty">Selected filters ke liye koi income entry nahi mili.</div>');
+    else if(BUDGET_TAB==='exp')h+=sec('#e11d48','🧾 Expenses Report',(ACC==='cash'?'Cash Account • ':ACC==='bank'?'Bank • ':'')+exp.length+' entries',exp.length?expTable(exp):'<div class="empty">Selected filters ke liye koi expense entry nahi mili.</div>');
+    else h+=summaryBlock();
     $('out'+sx).innerHTML=h;
   });
   {
     const fr=A=>A.filter(r=>isSel('purpose',r.purpose)&&isSel('branch',r.branch)&&isSel('cat',r.cat));
-    const erp=fr(D.erp),dm=fr(D.dm),te=sum(erp,'balance'),td=sum(dm,'balance'),df=te-td;
+    const erp=fr(visibleRows('erp')),dm=fr(visibleRows('dm')),te=sum(erp,'balance'),td=sum(dm,'balance'),df=te-td;
     let h='';
     if(!D.erp.length&&!D.dm.length)h='<div class="sec" style="--c:#64748b"><div class="empty">Abhi Fund Balance ke liye koi data nahi hai. Import me "Fund Balance" chun kar ERP Balance / DM Balance file daaliye.</div></div>';
     else{
-      h+='<div class="two">'+sec('#0284c7','🏦 ERP Balance',balAgg(erp).length+' lines',balTable(erp,'ERP'))+sec('#7c3aed','🗂️ DM Balance',balAgg(dm).length+' lines',balTable(dm,'DM'))+'</div>';
-      h+=`<div class="sum"><div class="k" style="--c:#0284c7"><div>ERP Balance Total</div><b>${fmt(te)}</b></div><div class="k" style="--c:#7c3aed"><div>DM Balance Total</div><b>${fmt(td)}</b></div><div class="k" style="--c:#059669"><div>Total Fund Balance (ERP + DM)</div><b>${fmt(te+td)}</b></div></div>`;
+      h+='<div class="fund-balance-stack">'+sec('#0284c7','🏦 ERP Balance',balAgg(erp).length+' lines',balTable(erp,'ERP'))+sec('#7c3aed','🗂️ DM Balance',balAgg(dm).length+' lines',balTable(dm,'DM'))+'</div>';
+      h+=`<div class="sum"><div class="k" style="--c:#0284c7"><div>ERP Balance Total</div><b>${fmt(te)}</b></div><div class="k" style="--c:#7c3aed"><div>DM Balance Total</div><b>${fmt(td)}</b></div><div class="k" style="--c:#059669"><div>ERP + DM (verify accounting basis)</div><b>${fmt(te+td)}</b></div></div>`;
     }
     $('out4').innerHTML=h;$('sub4').textContent=subtxt;
     const ut=['erp','dm'].filter(t=>D[t].length&&UPD[t]).map(t=>[t,UPD[t]]).sort((a,b)=>b[1]-a[1])[0],ue=$('upd');
@@ -450,9 +982,10 @@ addEventListener('afterprint',()=>{document.body.classList.remove('pr');refit()}
 
 /* ---------- demo ---------- */
 function demo(){
+  if(CLOUD)return note('Demo data Cloud mode mein allowed nahi');
   const br=['Mathura','Vrindavan','Delhi'],us=['Ramesh','Suresh','Anita'],md=['Cash','UPI','Cheque'];
   const A=['5010101 - SALARIES (P) EXP. - ALT','5020201 - ELECTRICITY EXP. - ALT','3030201 - Loan to staff - ALT','2020102 - Bank -- local currency - ALT'];
-  D={don:[],exp:[],fund:[],erp:[],dm:[]};
+  D={don:[],exp:[],fund:[],erp:[],dm:[],und:[]};
   br.forEach((b,i)=>{
     us.forEach((u,j)=>md.forEach((m,k)=>D.don.push({src:'demo_donation.xlsx',branch:b,status:(j+k)%3?'Deposited':'Pending',user:u,mode:m,amount:(i+1)*1000+j*500+k*250})));
     A.forEach((a,j)=>{const r={src:'demo_expenses.xlsx',against:'1010104 - EMPLOYEE WELFARE FUND (AKKF)` - ALT, '+a+(j%2?', 1000001 - Cash Account - ALT':''),branch:b,amount:(i+1)*700+j*900,acct:'—'};derive(r);D.exp.push(r)})});
@@ -460,146 +993,220 @@ function demo(){
   br.forEach((b,i)=>[['Building Fund','Restricted'],['Annadaan','General'],['Medical','Restricted']].forEach(([pu,ca],j)=>{D.erp.push({src:'demo_erp.xlsx',branch:b,purpose:pu,cat:ca,balance:(i+1)*50000+j*12000});D.dm.push({src:'demo_dm.xlsx',branch:b,purpose:pu,cat:ca,balance:(i+1)*50000+j*12000-(j===1?3000:0)})}));
   UPD.erp=UPD.dm=Date.now();applyU();chk();save();
 }
-/* ---------- CLOUD: login + shared database (Supabase) ---------- */
-let sb=null,ME=null,UL=[],CH=null,RT=null,AM='login';
-const BATCH=500;
-const canEdit=()=>!CLOUD||!!(ME&&(ME.role==='admin'||ME.role==='editor'));
-const canBr=b=>!ME||ME.role==='admin'||b==='—'||!(ME.branches&&ME.branches.length)||ME.branches.includes(b);
+/* ---------- Firebase Auth / Firestore: deny by default ---------- */
+let auth=null,dbCloud=null,ME=null,UL=[],INV_BRANCHES=[],pendingUnsub=null,NAME_EDIT_ID=null;
+const emptyData=()=>({don:[],exp:[],fund:[],erp:[],dm:[],und:[]});
+const isAdmin=()=>!!(ME&&ME.active&&ME.id===SUPER_UID&&ME.role==='superadmin');
+const isApprovedStaff=()=>!!(ME&&ME.active&&ME.approved===true&&Array.isArray(ME.branches));
+const canViewReports=()=>isAdmin()||!!(isApprovedStaff()&&ME.permissions?.viewReports===true);
+// The UI is only a second guard. Firestore Rules must independently enforce this branch check.
+const canEdit=()=>isAdmin();
+const canBr=b=>!!(isAdmin()||(canViewReports()&&b&&b!=='—'&&ME.branches.some(branch=>branchKey(branch)===branchKey(b))));
+function firebaseErrorMessage(error,scope='Firebase'){
+ const code=String(error&&error.code||'');
+ if(code==='permission-denied')return scope+' permission denied. Check the signed-in user profile, assigned branches, and deployed Firestore rules.';
+ if(code==='unauthenticated')return 'Your Firebase session expired. Please log in again.';
+ if(code==='failed-precondition')return scope+' is not ready (a Firestore index or required configuration may be missing).';
+ if(code==='unavailable'||code==='network-request-failed')return 'Firebase is temporarily unreachable. Check the internet connection and try again.';
+ return (error&&error.message)||scope+' request failed.';
+}
 function note(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(note.t);note.t=setTimeout(()=>e.style.display='none',3800)}
 function amsg(t,bad){const e=$('amsg');e.textContent=t||'';e.className='amsg'+(bad?' bad':'')}
-function showAuth(){$('auth').style.display='flex';$('a_form').style.display='';$('a_pend').style.display='none'}
-function authMode(){AM=AM==='login'?'signup':'login';const s=AM==='signup';$('a_name').style.display=s?'':'none';$('a_go').textContent=s?'Account banayein':'Login';$('a_sw').textContent=s?'Pehle se account hai? Login':'Naya account banayein';amsg('')}
-const authGo=()=>AM==='login'?doLogin():doSignup();
-async function doLogin(){
-  const email=$('a_email').value.trim(),pw=$('a_pw').value;
-  if(!email||!pw)return amsg('Email aur password daaliye',1);
-  amsg('Login ho raha hai...');
-  const {error}=await sb.auth.signInWithPassword({email,password:pw});
-  if(error)return amsg(error.message,1);
-  amsg('');await enter();
+function showAccessIssue(message){D=emptyData();ME=null;document.body.classList.remove('session-ready');$('auth').style.display='flex';$('a_form').style.display='none';$('a_change').style.display='none';$('a_pend').style.display='';$('a_pend').querySelector('p').textContent='🔒 '+message}
+function showAuth(){restoreRememberedEmail();hideRememberedEmails();amsg('');$('auth').style.display='flex';$('a_form').style.display='';$('a_pend').style.display='none';$('a_change').style.display='none'}
+const REMEMBER_EMAIL_KEY='branch_budget_recent_login_emails_v1';
+function getRememberedEmails(){try{const v=JSON.parse(localStorage.getItem(REMEMBER_EMAIL_KEY)||'[]');return Array.isArray(v)?v.filter(x=>typeof x==='string' && /^\S+@\S+\.\S+$/.test(x)).slice(0,5):[]}catch(e){return []}}
+function rememberLoginEmail(email){try{const emails=[email,...getRememberedEmails().filter(e=>e.toLowerCase()!==email.toLowerCase())].slice(0,5);localStorage.setItem(REMEMBER_EMAIL_KEY,JSON.stringify(emails))}catch(e){}}
+function hideRememberedEmails(){$('rememberedEmails').style.display='none'}
+function showRememberedEmails(){const input=$('a_email'),panel=$('rememberedEmails'),query=input.value.trim().toLowerCase();panel.replaceChildren();const matches=getRememberedEmails().filter(e=>!query || e.toLowerCase().includes(query));for(const email of matches){const b=document.createElement('button');b.type='button';b.className='remembered-email-option';b.setAttribute('role','option');b.textContent=email;b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',()=>{input.value=email;hideRememberedEmails();$('a_pw').focus()});panel.appendChild(b)}panel.style.display=matches.length?'block':'none'}
+function restoreRememberedEmail(){const input=$('a_email');if(input && !input.value){const emails=getRememberedEmails();if(emails.length)input.value=emails[0]}}
+document.addEventListener('click',e=>{if(!e.target.closest('.remember-email-wrap'))hideRememberedEmails()});
+const authGo=()=>doLogin();
+function toggleLoginPassword(){
+ const pw=$('a_pw'),btn=$('passwordToggle'),show=pw.type==='password';
+ pw.type=show?'text':'password';
+ btn.setAttribute('aria-label',show?'Hide password':'Show password');
+ btn.setAttribute('title',show?'Hide password':'Show password');
+ btn.setAttribute('aria-pressed',String(show));
+ $('eyeOpen').style.display=show?'none':'';
+ $('eyeClosed').style.display=show?'':'none';
 }
-async function doSignup(){
-  const name=$('a_name').value.trim(),email=$('a_email').value.trim(),pw=$('a_pw').value;
-  if(!name||!email||pw.length<6)return amsg('Naam, email aur kam se kam 6 akshar ka password daaliye',1);
-  amsg('Account ban raha hai...');
-  const {data,error}=await sb.auth.signUp({email,password:pw,options:{data:{name}}});
-  if(error)return amsg(error.message,1);
-  if(!data.session)return amsg('Account ban gaya. Email confirm mangi ho to inbox dekhiye, phir Login kijiye. Access Super Admin ke approve karne par milega.');
-  amsg('');await enter();
+function togglePasswordField(id,btn){
+ const pw=$(id),show=pw.type==='password';
+ pw.type=show?'text':'password';
+ btn.textContent=show?'🙈':'👁';
+ btn.setAttribute('aria-label',show?'Hide password':'Show password');
+ btn.setAttribute('title',show?'Hide password':'Show password');
 }
-async function logout(){try{await sb.auth.signOut()}catch(e){}location.reload()}
-async function boot(){
-  $('auth').style.display='flex';
-  sb=supabase.createClient(SB_URL,SB_KEY);
-  const {data:{session}}=await sb.auth.getSession();
-  session?await enter():showAuth();
+async function doLogin(){const email=$('a_email').value.trim(),pw=$('a_pw').value;if(!email||!pw)return amsg('Email aur password daaliye',1);amsg('Login ho raha hai...');try{await auth.signInWithEmailAndPassword(email,pw);rememberLoginEmail(email);hideRememberedEmails();amsg('Login verified. Loading account...')}catch(e){amsg(e.message,1)}}
+async function logout(){document.body.classList.remove('session-ready');ME=null;D={don:[],exp:[],fund:[],erp:[],dm:[],und:[]};try{await auth.signOut()}catch(e){}showAuth();goSafeDashboard()}
+function goSafeDashboard(){PG=7;document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));$('p7').classList.add('on')}
+async function boot(){showAuth();firebase.initializeApp(firebaseConfig);auth=firebase.auth();dbCloud=firebase.firestore();await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);auth.onAuthStateChanged(async user=>{if(user&&user.email)rememberLoginEmail(user.email);if(!user){ME=null;D=emptyData();document.body.classList.remove('session-ready');showAuth();return}await enter().catch(e=>showAccessIssue(firebaseErrorMessage(e,'Firebase access')))})}
+async function enter(){const user=auth.currentUser;if(!user)return showAuth();let snap;try{snap=await dbCloud.collection('users').doc(user.uid).get()}catch(e){return showAccessIssue(firebaseErrorMessage(e,'Your access profile'))}if(!snap.exists){document.body.classList.remove('session-ready');$('auth').style.display='flex';$('a_form').style.display='none';$('a_pend').style.display='';$('a_pend').querySelector('p').textContent='⏳ Account registered, but user profile/approval pending. Super Admin ko UID aur email dein. Financial access blocked.';return}
+ const p=snap.data();ME={...p,id:user.uid,name:p.name||user.displayName||'',email:p.email||user.email,branches:Array.isArray(p.branches)?p.branches:[]};
+ if(ME.mustChangePassword===true){document.body.classList.remove('session-ready');$('auth').style.display='flex';$('a_form').style.display='none';$('a_pend').style.display='none';$('a_change').style.display='';$('change_msg').textContent='Pehli login ke liye apna naya private password banaiye (minimum 6 characters).';return}
+ if(!ME.active || (ME.id!==SUPER_UID && ME.approved!==true))return showAccessIssue('Your account is pending activation or approval. Ask the Super Admin to approve it.');
+ if(!canViewReports())return showAccessIssue('This account is not allowed to view reports. Ask the Super Admin to enable report access and assign at least one branch.');
+ 
+ PG=7;const preview=$('importPreview');if(preview)preview.innerHTML='<span class="mut">No file selected. Choose a new Excel to preview.</span>';setupUI();await loadColumnPolicy();let dataError=null;try{let version=await getReportVersion();if(!version&&isAdmin())try{version=await touchReportVersion()}catch(e){}const cached=version?await readCloudCache(version):null;if(cached){D=cached;DATA_VERSION=version;syncUI()}else await loadCloud(version)}catch(e){D=emptyData();dataError=e;console.error('Financial data unavailable; login remains active:',e)}if(auth.currentUser?.uid!==user.uid)throw Error('Session changed');$('auth').style.display='none';document.body.classList.add('session-ready');go(7);const oldWarning=$('cloudDataWarning');if(oldWarning)oldWarning.remove();if(dataError){const warn=document.createElement('div');warn.id='cloudDataWarning';warn.setAttribute('role','alert');warn.style.cssText='margin:12px 0;padding:14px 18px;background:#fff4e5;border:1px solid #f59e0b;border-radius:12px;color:#92400e;font-weight:600';warn.textContent='Login successful, but no financial data was shown because '+firebaseErrorMessage(dataError,'Firestore')+' Ask the Super Admin to check the rules and assigned branches.';document.querySelector('.wrap').prepend(warn)}
 }
-async function enter(){
-  const {data:{user}}=await sb.auth.getUser();
-  if(!user)return showAuth();
-  const {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
-  if(error||!p){showAuth();return amsg((error&&error.message)||'Profile nahi mili. supabase_setup.sql chalayi hai ya nahi dekhiye.',1)}
-  ME=p;
-  if(!p.active){$('auth').style.display='flex';$('a_form').style.display='none';$('a_pend').style.display='';return}
-  $('auth').style.display='none';
-  setupUI();await restoreLocal();
-  try{await loadCloud()}catch(e){note('Data load nahi hua: '+e.message)}
-  subscribe();go(PG);
+function displayProfileName(profile){const saved=String(profile&&profile.name||'').trim(),authName=profile&&profile.id===SUPER_UID&&auth&&auth.currentUser?String(auth.currentUser.displayName||'').trim():'';return saved&&saved!==profile.id?saved:(authName||(profile&&profile.email)||((profile&&profile.id===SUPER_UID)?'Super Admin':(profile&&profile.id)||'—'))}
+function setupUI(){const ed=isAdmin();$('who').innerHTML='<span class="badge">'+(isAdmin()?'👑 Super Admin':'Staff')+'</span><span>'+esc(displayProfileName(ME))+'</span><button onclick="logout()">Logout</button>';
+ $('n1').style.display=isAdmin()?'':'none';$('n3').style.display=isAdmin()?'':'none';$('n10').style.display=isAdmin()?'':'none';$('demob').style.display='none';
+ document.querySelectorAll('.editonly').forEach(e=>e.style.display=ed?'':'none');
+ $('lm').style.display='none';$('lm').textContent='';
+ document.querySelectorAll('#p1 input[type=file]').forEach(x=>x.disabled=!ed);
 }
-function setupUI(){
-  const r=ME.role,ed=canEdit(),lim=ME.role!=='admin'&&ME.branches&&ME.branches.length;
-  $('who').innerHTML=`<span class="badge">${r==='admin'?'👑 Super Admin':r==='editor'?'✏️ Editor':'👁️ Viewer'}</span><span>${esc(ME.name||ME.email)}${lim?' • '+esc(ME.branches.join(', ')):''}</span><button onclick="refreshCloud()">🔄 Refresh</button><button onclick="logout()">Logout</button>`;
-  $('n1').style.display=ed?'':'none';
-  $('n3').style.display=r==='admin'?'':'none';
-  document.querySelectorAll('.editonly').forEach(e=>e.style.display=ed?'':'none');
-  $('demob').style.display='none';
-}
-async function restoreLocal(){
-  try{const db=await idb();const v=await new Promise(r=>{const q=db.transaction('s').objectStore('s').get('c2:'+ME.id);q.onsuccess=()=>r(q.result);q.onerror=()=>r()});
-    if(v){PG=v.PG;for(const k in v.F)F[k]=v.F[k]}}catch(e){}
-}
-async function loadCloud(){
-  const nd={don:[],exp:[],fund:[],erp:[],dm:[]};
-  for(let from=0;;from+=1000){
-    const {data,error}=await sb.from('bbr_rows').select('type,data').order('id').range(from,from+999);
-    if(error)throw error;
-    data.forEach(x=>{if(nd[x.type])nd[x.type].push(x.data)});
-    if(data.length<1000)break;
+async function loadCloud(version=null){
+ if(!canViewReports()){D=emptyData();syncUI();throw Error('Report access is not approved for this account.');}
+ const cacheVersion=version||await getReportVersion();
+ const nd=emptyData();
+ try{
+  for(const [privateCollection,type] of [['donations','don'],['expenses','exp'],['funds','fund'],['erpBalances','erp'],['dmBalances','dm'],['undeposits','und']]){
+   const collection=privateCollection,snapshots=[];
+   if(isAdmin())snapshots.push(await dbCloud.collection(collection).get());
+   else {
+    const branches=[...new Set(ME.branches.filter(branch=>typeof branch==='string'&&branch.trim()&&branch!=='—'))];
+    if(!branches.length)continue;
+    // Query the same top-level branch field guarded by the Firestore rules. Staff never query raw collections.
+    for(let i=0;i<branches.length;i+=10)snapshots.push(await dbCloud.collection(collection).where('branch','in',branches.slice(i,i+10)).get());
+   }
+   const seen=new Set();
+   for(const snapshot of snapshots)snapshot.forEach(doc=>{if(seen.has(doc.id))return;seen.add(doc.id);const value=doc.data(),row=value.row&&typeof value.row==='object'?value.row:value;
+    if(!isAdmin()&&(!(value.row&&typeof value.row==='object')||value.branch!==row.branch))return;
+    if(row&&typeof row==='object'&&(isAdmin()||canBr(row.branch)))nd[type].push({...row,__cloudDocId:doc.id,src:row.src||collection});
+   });
   }
-  D=nd;
-  const {data:c}=await sb.from('bbr_settings').select('value').eq('key','cfg').maybeSingle();
-  if(c&&c.value){U=Object.assign(U,c.value.U||{});ACC=c.value.ACC||ACC;UPD=c.value.UPD||UPD}
-  syncUI();
+  D=nd;DATA_VERSION=cacheVersion;if(cacheVersion)await saveCloudCache(cacheVersion);syncUI();
+ }catch(e){D=emptyData();syncUI();throw e;}
 }
-function syncUI(){
-  applyU();
-  document.querySelector(`input[name=acc][value=${ACC}]`).checked=true;
-  chk();if(SFX[PG]!==undefined){buildFilters();draw()}
-}
-async function refreshCloud(){try{await loadCloud();note('✅ Data refresh ho gaya')}catch(e){note(e.message)}}
-const bump=()=>sb.from('bbr_settings').upsert({key:'sync',value:{by:ME.id,t:Date.now()},updated_at:new Date().toISOString()});
-async function saveCfg(){
-  save();
-  if(CLOUD&&canEdit()){const {error}=await sb.from('bbr_settings').upsert({key:'cfg',value:{U,ACC,UPD,by:ME.id},updated_at:new Date().toISOString()});if(error)note(error.message)}
-}
-function subscribe(){
-  if(CH)sb.removeChannel(CH);
-  CH=sb.channel('bbr-settings').on('postgres_changes',{event:'*',schema:'public',table:'bbr_settings'},p=>{
-    const r=p.new||{},v=r.value||{};if(v.by===ME.id)return;
-    if(r.key==='cfg'){U=Object.assign(U,v.U||{});ACC=v.ACC||ACC;UPD=v.UPD||UPD;syncUI()}
-    else if(r.key==='sync'){clearTimeout(RT);RT=setTimeout(()=>loadCloud().then(()=>note('🔄 Naya data aaya')).catch(()=>{}),800)}
-  }).subscribe();
-}
-async function cloudPut(type,srcName,rows,errs){
-  const ok=rows.filter(r=>canBr(r.branch)),skip=rows.length-ok.length;
-  const {error:e1}=await sb.from('bbr_rows').delete().eq('type',type).eq('src',srcName);
-  if(e1){errs.push(dn(srcName)+': purana data hata nahi paya ('+e1.message+')');return false}
-  for(let i=0;i<ok.length;i+=BATCH){
-    const part=ok.slice(i,i+BATCH).map(r=>({type,src:srcName,branch:r.branch||'—',data:r}));
-    const {error}=await sb.from('bbr_rows').insert(part);
-    if(error){errs.push(dn(srcName)+': save nahi hua ('+error.message+')');return false}
+function syncUI(){applyU();const radio=document.querySelector(`input[name=acc][value=${ACC}]`);if(radio)radio.checked=true;chk();if(SFX[PG]!==undefined){buildFilters();draw()}if(PG===7)renderDashboard();if(PG===11)renderBranchDetail()}
+async function refreshCloud(){if(REFRESHING)return note('Refresh already chal raha hai.');REFRESHING=true;try{const user=auth.currentUser,snap=user?await dbCloud.collection('users').doc(user.uid).get():null;if(snap&&snap.exists){const profile=snap.data();ME={...profile,id:user.uid,name:profile.name||user.displayName||'',email:profile.email||user.email,branches:Array.isArray(profile.branches)?profile.branches:[]}}const version=await getReportVersion(),cached=version?await readCloudCache(version):null;if(cached){D=cached;DATA_VERSION=version;syncUI();renderDashboard();note('✅ Data already updated hai — cache se load hua.')}else{await loadCloud(version);renderDashboard();note('✅ Naya report data load ho gaya.')}}catch(e){note(firebaseErrorMessage(e,'Report refresh'))}finally{REFRESHING=false}}
+async function saveCfg(){save();note('Filter settings sirf current session ke liye hain')}
+function cloudImportDoc(type,row,prefix,index){const {rawColumns,...canonical}=row;return {row:{...canonical,rawColumns:rawColumns||{}},branch:row.branch,importId:prefix,sourceType:type,sourceFile:dn(row.src||''),createdBy:auth.currentUser.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()}}
+async function cloudPut(type,rows,mode,errs){
+ if(!isAdmin()){errs.push('Super Admin access required');return {ok:false}}
+ const collection=reportCollection[type];if(!collection){errs.push('Unknown report type');return {ok:false}}
+ if(!['replace','merge'].includes(mode)){errs.push('Choose Replace, Merge, or Cancel.');return {ok:false}}
+ const coll=dbCloud.collection(collection);
+ try{
+  const old=await coll.get(),existingRows=old.docs.map(doc=>{const value=doc.data();return value.row&&typeof value.row==='object'?value.row:value});
+  const merged=mode==='merge'?newMergeRows(type,existingRows,rows):null;
+  const writeRows=mode==='replace'?rows:merged.added,writeCount=(mode==='replace'?old.size:0)+writeRows.length;
+ if(mode==='replace'&&writeCount>450){errs.push('Refused: Replace needs '+writeCount+' writes, above the safe atomic limit of 450. No data changed. Use Merge for this large file.');return {ok:false}}
+  if(mode==='replace'&&old.size)saveBackup(type,old.docs);
+  if(writeRows.length){
+   const signature=JSON.stringify({type,mode,rows:writeRows,stamp:Date.now()});let hash=2166136261;for(let i=0;i<signature.length;i++)hash=Math.imul(hash^signature.charCodeAt(i),16777619);
+  const prefix='imp_'+(hash>>>0).toString(36)+'_'+Date.now().toString(36),operations=writeRows.map((row,index)=>({ref:coll.doc(prefix+'_'+index),data:cloudImportDoc(type,row,prefix,index)}));
+  if(mode==='replace'){const batch=dbCloud.batch();old.docs.forEach(doc=>batch.delete(doc.ref));operations.forEach(operation=>batch.set(operation.ref,operation.data));await batch.commit();}
+  else{for(let i=0;i<operations.length;i+=400){const batch=dbCloud.batch();operations.slice(i,i+400).forEach(operation=>batch.set(operation.ref,operation.data));await batch.commit();}}
+   try{await touchReportVersion()}catch(e){errs.push('Data saved, but cache version update failed: '+firebaseErrorMessage(e,'Firebase'))}
+   try{await syncStaffProjection(type,null,null,true)}catch(e){errs.push('Canonical report saved, but staff-safe copies were not refreshed: '+firebaseErrorMessage(e,'Firebase')+'. Use Publish Staff Access after checking rules.')}
   }
-  if(skip)errs.push(dn(srcName)+': '+skip+' rows aapki branch ki nahi thi, chhod di gayi');
-  return true;
+  return {ok:true,saved:writeRows.length,skipped:merged?merged.skipped:0};
+ }catch(e){errs.push('Firebase '+(mode==='merge'?'Merge stopped; some new rows may already be saved. Press Refresh, then retry safely. Existing records were not deleted. ':'save failed: ')+firebaseErrorMessage(e,'Firebase'));return {ok:false}}
 }
 
-/* ---------- Users & Access (Super Admin) ---------- */
-async function loadUsers(){
-  const {data,error}=await sb.from('profiles').select('*').order('created_at');
-  if(error){$('ulist').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
-  UL=data;renderUsers();
+async function changeFirstPassword(){
+ const user=auth.currentUser;if(!user)return;
+ const pw=$('new_pw').value,confirmPw=$('new_pw2').value,msg=$('change_msg'),btn=$('change_btn');
+ if(pw.length<6||pw!==confirmPw){msg.textContent='Use at least 6 characters and matching passwords.';return;}
+ btn.disabled=true;msg.textContent='Updating password in Firebase Authentication...';
+ try{
+  await user.updatePassword(pw);
+  await dbCloud.collection('users').doc(user.uid).update({mustChangePassword:false});
+  ME={...ME,mustChangePassword:false};
+  $('new_pw').value='';$('new_pw2').value='';
+  msg.textContent='Password changed. Aap ab naye password se login kar sakte hain.';
+  await auth.signOut();
+  showAuth();amsg('Password updated. Naye password se login karein.');
+ }catch(e){msg.textContent=e.code==='auth/requires-recent-login'?'Please log out and log in again with your temporary password, then change it.':e.code==='permission-denied'?'Password change ho gaya, lekin profile lock clear nahi hua. Updated Firestore Rules paste karke phir login karein.':e.message;}
+ finally{btn.disabled=false;}
 }
-function renderUsers(){
-  const br=uniq(vals('branch').concat(...UL.map(u=>u.branches||[])));
-  const RL={admin:'Super Admin',editor:'Editor (import + edit)',viewer:'Viewer (sirf dekhe)'};
-  $('ucount').textContent=UL.length+' users • '+UL.filter(u=>!u.active).length+' approval baaki';
-  $('ulist').innerHTML='<table><thead><tr><th>Naam</th><th>Email</th><th>Role</th><th>Branch access</th><th>Active</th><th></th></tr></thead><tbody>'+UL.map(u=>{
-    const me=u.id===ME.id,bs=u.branches||[],all=!bs.length;
-    return `<tr><td><b>${esc(u.name||'')}</b>${me?' <small class="mut">(aap)</small>':''}</td><td>${esc(u.email||'')}</td>
-    <td><select id="r_${u.id}" ${me?'disabled':''}>${Object.keys(RL).map(x=>`<option value="${x}" ${u.role===x?'selected':''}>${RL[x]}</option>`).join('')}</select></td>
-    <td>${u.role==='admin'||me?'Saari branch':`<details class="bsel"><summary>${all?'Saari branch':bs.length+' branch'}</summary><div class="bl"><label><input type="checkbox" id="ba_${u.id}" ${all?'checked':''} onchange="baAll('${u.id}',this)"><b>Saari branch</b></label>${br.map(b=>`<label><input type="checkbox" data-u="${u.id}" value="${esc(b)}" ${bs.includes(b)?'checked':''}>${esc(b)}</label>`).join('')}</div></details>`}</td>
-    <td><input type="checkbox" id="a_${u.id}" ${u.active?'checked':''} ${me?'disabled':''}></td>
-    <td>${me?'':`<button class="btn sm2" onclick="saveUser('${u.id}')">Save</button>`}</td></tr>`}).join('')+'</tbody></table>';
+async function forgotPassword(){
+ const email=$('a_email').value.trim();if(!/^\S+@\S+\.\S+$/.test(email))return amsg('Reset ke liye pehle valid email daaliye',1);
+ try{await auth.sendPasswordResetEmail(email);amsg('Agar account maujood hai, reset email bheji jayegi. Inbox/Spam check karein.')}catch(e){amsg('Password reset request failed: '+e.message,1)}
 }
-function baAll(id,el){if(el.checked)document.querySelectorAll(`input[data-u="${id}"]`).forEach(x=>x.checked=false)}
-document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.u&&t.checked){const a=$('ba_'+t.dataset.u);if(a)a.checked=false}});
-async function saveUser(id){
-  const role=$('r_'+id).value,active=$('a_'+id).checked,ba=$('ba_'+id);
-  const sel=[...document.querySelectorAll(`input[data-u="${id}"]:checked`)].map(x=>x.value);
-  const branches=(!ba||ba.checked||!sel.length)?null:sel;
-  const {error}=await sb.from('profiles').update({role,active,branches}).eq('id',id);
-  note(error?error.message:'✅ Save ho gaya');loadUsers();
+function inviteVisibleBranches(){const query=String($('inv_branch_search')?.value||'').trim().toLowerCase();return knownBranches().filter(branch=>!query||branch.toLowerCase().includes(query)||branchKey(branch).toLowerCase().includes(query))}
+function normalizeInviteBranches(values){return [...new Set((values||[]).map(canonicalBranch).filter(branch=>branch&&branch!=='—'))]}
+function renderInviteBranchPicker(){
+ const list=$('inv_branch_list'),summary=$('inv_branch_summary'),all=$('inv_branch_all');if(!list||!summary||!all)return;
+ const options=knownBranches();INV_BRANCHES=normalizeInviteBranches(INV_BRANCHES).filter(value=>options.some(branch=>branchKey(branch)===branchKey(value)));
+ const shown=inviteVisibleBranches();
+ summary.textContent=!INV_BRANCHES.length?'Select branches from uploaded sheet':INV_BRANCHES.length===1?INV_BRANCHES[0]:INV_BRANCHES.length+' branches selected';
+ all.checked=shown.length>0&&shown.every(branch=>INV_BRANCHES.some(value=>branchKey(value)===branchKey(branch)));all.disabled=!shown.length;
+ list.innerHTML=shown.length?shown.map(branch=>'<label><input type="checkbox" data-invite-branch="'+esc(branch)+'" '+(INV_BRANCHES.some(value=>branchKey(value)===branchKey(branch))?'checked':'')+' onchange="setInviteBranch(this.dataset.inviteBranch,this.checked)">'+esc(branch)+'</label>').join(''):'<div class="invite-branch-empty">Koi branch data nahi. Pehle report sheet upload karein.</div>';
 }
-
+function setInviteBranch(branch,checked){const key=branchKey(branch);INV_BRANCHES=INV_BRANCHES.filter(value=>branchKey(value)!==key);if(checked)INV_BRANCHES.push(canonicalBranch(branch));renderInviteBranchPicker()}
+function setInviteAllBranches(checked){const shown=inviteVisibleBranches(),keys=new Set(shown.map(branch=>branchKey(branch)));INV_BRANCHES=INV_BRANCHES.filter(value=>!keys.has(branchKey(value)));if(checked)INV_BRANCHES.push(...shown.map(canonicalBranch));INV_BRANCHES=normalizeInviteBranches(INV_BRANCHES);renderInviteBranchPicker()}
+function clearInviteBranches(){INV_BRANCHES=[];const search=$('inv_branch_search');if(search)search.value='';renderInviteBranchPicker()}
+function closeInviteBranchPicker(){const picker=$('inv_branch_picker');if(picker)picker.open=false}
+async function linkExistingUser(){
+ if(!isAdmin())return note('Super Admin required');
+ const status=$('inv_status'),btn=$('inv_send');
+ const name=$('inv_name').value.trim(),email=$('inv_email').value.trim().toLowerCase(),uid=$('inv_uid').value.trim();
+ const role=$('inv_role').value,branches=normalizeInviteBranches(INV_BRANCHES);
+ if(!name||!/^\S+@\S+\.\S+$/.test(email)||!uid||uid.includes('/')||uid===SUPER_UID||!branches.length||role!=='viewer')return status.textContent='Manager name, email, UID aur sheet se kam se kam ek branch select karein.';
+ if(!confirm('Confirm UID and email match the Firebase Authentication account for '+email+'? A wrong UID will link the wrong account.'))return;
+ btn.disabled=true;status.textContent='Saving user profile to Firestore...';
+ try{const ref=dbCloud.collection('users').doc(uid);const existing=await ref.get();if(existing.exists)throw Error('UID already linked. Use Save in the Users table.');
+ await ref.set({name,email,role:'viewer',branches,active:false,approved:false,mustChangePassword:true,permissions:{viewReports:true,manageData:false},createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdBy:auth.currentUser.uid});
+ clearInviteBranches();$('inv_name').value='';$('inv_email').value='';$('inv_uid').value='';closeInviteBranchPicker();status.textContent='✅ Manager profile linked. Active/Approved karne ke baad uski pehli login par private password banana mandatory hoga.';await loadUsers();
+ }catch(e){status.textContent='❌ '+e.message}finally{btn.disabled=false}
+}
+async function resetStaffPassword(id){
+ if(!isAdmin()||id===SUPER_UID)return;const user=UL.find(x=>x.id===id);if(!user||!user.email)return note('No email in profile');
+ if(!confirm('Send Firebase password reset email to '+user.email+'? Verify this email matches the Authentication account.'))return;
+ try{await auth.sendPasswordResetEmail(user.email);note('Reset email requested. Check inbox/spam.')}catch(e){note('Reset failed: '+e.message)}
+}
+async function requireStaffPasswordChange(id){
+ if(!isAdmin()||id===SUPER_UID)return;const user=UL.find(x=>x.id===id);if(!user)return;
+ if(!confirm((user.name||user.email||'This manager')+' ki next login par private password banana mandatory karein?'))return;
+ try{await dbCloud.collection('users').doc(id).update({mustChangePassword:true,passwordChangeRequestedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:auth.currentUser.uid});note('Next login par manager ko private password banana hoga.');await loadUsers()}catch(e){note('Password requirement save nahi hui: '+firebaseErrorMessage(e,'User save'))}
+}
+function startUserNameEdit(id){
+ if(!isAdmin()||!UL.some(user=>user.id===id))return;NAME_EDIT_ID=id;renderUsers();requestAnimationFrame(()=>{const input=$('name_edit');if(input){input.focus();input.select()}})
+}
+function cancelUserNameEdit(){NAME_EDIT_ID=null;renderUsers()}
+async function saveUserName(id){
+ if(!isAdmin())return;const input=$('name_edit'),name=String(input&&input.value||'').trim();
+ if(name.length<2)return note('Kam se kam 2 letters ka naam likhiye.');
+ try{
+  await dbCloud.collection('users').doc(id).update({name,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:auth.currentUser.uid});
+  if(id===SUPER_UID){ME={...ME,name};setupUI()}
+  NAME_EDIT_ID=null;note('✅ Naam update ho gaya.');await loadUsers()
+ }catch(e){note('Naam update nahi hua: '+firebaseErrorMessage(e,'User profile'))}
+}
+async function loadUsers(){if(!isAdmin())return;try{const snapshot=await dbCloud.collection('users').get();UL=snapshot.docs.map(d=>({id:d.id,...d.data()}));renderUsers()}catch(e){$('ulist').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
+function renderUsers(){const br=uniq(knownBranches().concat(...UL.map(u=>u.branches||[]))),resolveBranches=values=>[...new Set((values||[]).map(canonicalBranch))];
+ $('ucount').textContent=UL.length+' users • '+UL.filter(u=>!u.active||u.approved!==true).length+' pending/locked';
+ const nameEditor=u=>NAME_EDIT_ID===u.id
+  ?`<input id="name_edit" value="${esc(String(u.name||displayProfileName(u)).trim())}" placeholder="Full name" maxlength="80" style="width:180px;max-width:100%"> <button class="btn sm2" type="button" onclick="saveUserName('${u.id}')" title="Save name">Save</button> <button class="btn sm" type="button" onclick="cancelUserNameEdit()" title="Cancel name edit">Cancel</button>`
+  :`<b>${esc(displayProfileName(u))}</b>${u.id===SUPER_UID?' (Super Admin)':''}`;
+ $('ulist').innerHTML='<table><thead><tr><th>Name / UID</th><th>Email</th><th>Role</th><th>Branches</th><th>Active</th><th>Approved</th><th>Action</th></tr></thead><tbody>'+UL.map(u=>{const me=u.id===SUPER_UID,bs=resolveBranches(u.branches),branchChanged=!me&&JSON.stringify(bs)!==JSON.stringify(u.branches||[]);
+ return `<tr><td>${nameEditor(u)}</td><td>${esc(u.email||'')}</td><td>${me?'superadmin':`<input type="hidden" id="r_${u.id}" value="viewer"><b>Branch Manager</b><br><small>View only</small>`}</td><td>${me?'All branches':`<details class="bsel"><summary>${bs.length?bs.join(', '):'Select branches'}</summary><div class="bl">${branchChanged?'<small class="mut">BR code matched. Save dabakar exact branch name apply karein.</small>':''}${br.map(b=>`<label><input type="checkbox" data-u="${u.id}" value="${esc(b)}" ${bs.some(value=>branchKey(value)===branchKey(b))?'checked':''}>${esc(b)}</label>`).join('')}</div></details>`}</td><td><input type="checkbox" id="a_${u.id}" ${u.active?'checked':''} ${me?'disabled':''}></td><td>${me?'Protected':`<input type="checkbox" id="ap_${u.id}" ${u.approved===true?'checked':''}>`}</td><td><button class="btn sm2" type="button" onclick="startUserNameEdit('${u.id}')" title="Edit name" aria-label="Edit name">✏️</button>${me?' Protected':` <button class="btn sm2" onclick="saveUser('${u.id}')">Save</button> <button class="btn sm2" onclick="requireStaffPasswordChange('${u.id}')">Require New Password</button> <button class="btn sm2" onclick="resetStaffPassword('${u.id}')">Email Reset</button> <button class="btn sm" onclick="removeUserProfile('${u.id}')">Remove</button>`}</td></tr>`}).join('')+'</tbody></table>';renderInviteBranchPicker();
+}
+function baAll(){}
+async function saveUser(id){if(!isAdmin()||id===SUPER_UID)return note('Permission denied');const role=$('r_'+id).value,active=$('a_'+id).checked,approved=$('ap_'+id).checked,branches=[...document.querySelectorAll(`input[data-u="${id}"]:checked`)].map(x=>x.value),existing=UL.find(user=>user.id===id);
+ if(!branches.length)return note('Select at least one branch');if(!confirm('Update role, branch, approval and active status for this user?'))return;
+ try{if(role!=='viewer')throw Error('Branch Manager must remain View Only');await dbCloud.collection('users').doc(id).update({role:'viewer',active,approved,mustChangePassword:existing?.mustChangePassword===true,branches,permissions:{viewReports:true,manageData:false},updatedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedBy:auth.currentUser.uid});note('Manager profile updated. Auth account status is not changed.');await loadUsers()}catch(e){note('Save failed: '+firebaseErrorMessage(e,'User save'))}
+}
+async function removeUserProfile(id){
+ if(!isAdmin()||id===SUPER_UID)return note('Permission denied');const user=UL.find(item=>item.id===id);if(!user)return;
+ if(!confirm((user.name||user.email||'This manager')+' ko Users list se remove karein? Isse report access turant band hoga. Authentication account Firebase Console mein alag se delete hota hai.'))return;
+ try{await dbCloud.collection('users').doc(id).delete();note('Manager profile remove ho gaya; report access band hai.');await loadUsers()}catch(e){note('Remove failed: '+firebaseErrorMessage(e,'User remove'))}
+}
 
 /* ---------- Form: PDF attach / view / download / delete (saved in this browser) ---------- */
 let FILES=[];
 async function fLoad(){
+  if(CLOUD){FILES=[];fRender();$('f_list').innerHTML='<div class="empty">Cloud PDF library abhi configured nahi hai. Browser-local PDFs shared nahi hain. Secure Storage setup ke baad enable karein.</div>';return}
   try{const db=await idb();FILES=await new Promise(r=>{const q=db.transaction('pdf').objectStore('pdf').getAll();q.onsuccess=()=>r(q.result||[]);q.onerror=()=>r([])})}catch(e){FILES=[]}
   fRender();
 }
 function fPick(i){const f=i.files[0];$('f_sel').textContent=f?'Chuni gayi file: '+f.name:'';if(f&&!$('f_name').value.trim())$('f_name').value=f.name.replace(/\.pdf$/i,'')}
 async function fAdd(){
+  if(CLOUD)return note('🔒 Cloud PDF upload abhi disabled hai. Private Firebase Storage aur policies zaroori hain.');
   const f=$('f_file').files[0],name=$('f_name').value.trim();
   if(!f)return note('Pehle PDF file chuniye');
   if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name)))return note('Sirf PDF file attach ho sakti hai');
@@ -612,6 +1219,7 @@ const fById=id=>FILES.find(x=>x.id===id);
 function fView(id){const r=fById(id);if(!r)return;const u=URL.createObjectURL(r.blob);window.open(u,'_blank');setTimeout(()=>URL.revokeObjectURL(u),60000)}
 function fDown(id){const r=fById(id);if(!r)return;const u=URL.createObjectURL(r.blob),a=document.createElement('a');a.href=u;a.download=(r.name||'file').replace(/[\\/:*?"<>|]/g,'_')+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
 async function fDel(id){
+  if(CLOUD)return note('🔒 Cloud PDF delete disabled hai jab tak secure storage setup nahi hota.');
   const r=fById(id);if(!r||!confirm('"'+r.name+'" delete ho jayegi. Aage badhein?'))return;
   try{const db=await idb();await new Promise((res,rej)=>{const tx=db.transaction('pdf','readwrite');tx.objectStore('pdf').delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}catch(e){return note('Delete nahi hua')}
   note('🗑️ Delete ho gayi');fLoad();
@@ -624,7 +1232,71 @@ function fRender(){
   $('f_list').innerHTML='<table><thead><tr><th>#</th><th>Naam</th><th>File</th><th class="n">Size</th><th>Date</th><th>Action</th></tr></thead><tbody>'+FILES.map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.name)}</b></td><td>${esc(r.fname)}</td><td class="n">${sz(r.size)}</td><td>${new Date(r.date).toLocaleDateString('en-IN')}</td><td><div class="ab"><button class="btn sm2 v" onclick="fView('${r.id}')">👁️ View</button><button class="btn sm2 dl" onclick="fDown('${r.id}')">⬇️ Download</button>${ed?`<button class="btn sm2 sm" onclick="fDel('${r.id}')">🗑️ Delete</button>`:''}</div></td></tr>`).join('')+'</tbody></table>';
 }
 
-if(CLOUD)boot();else{$('lm').style.display='block';restore()}
+/* ===== Phase 1 reporting modules: read-only derived views; never grant permissions ===== */
+const safeRows=t=>D[t].filter(r=>!CLOUD||canBr(r.branch));
+function branchSummary(){
+ const a=new Map();const get=b=>{const key=branchKey(b);if(!key)return null;const o=a.get(key)||{branch:b,don:0,exp:0,erp:0,dm:0,und:0};if(String(b).length>String(o.branch).length)o.branch=b;a.set(key,o);return o};
+ for(const r of safeRows('don').filter(r=>pgOf(r.src)==='b'&&r.branch!=='—')){const o=get(r.branch);if(o)o.don+=Number(r.amount)||0}
+ for(const r of safeRows('exp').filter(r=>pgOf(r.src)==='b'&&r.branch!=='—'&&r.ledger)){const o=get(r.branch);if(o)o.exp+=Number(r.amount)||0}
+ for(const t of ['erp','dm'])for(const r of safeRows(t).filter(r=>r.branch!=='—')){const o=get(r.branch);if(o)o[t]+=Number(r.balance)||0}
+ for(const r of safeRows('und').filter(r=>r.branch!=='—')){const o=get(r.branch);if(o)o.und+=Number(r.amount)||0}
+ return [...a.values()].sort((x,y)=>x.branch.localeCompare(y.branch));
+}
+function infoCard(name,value,color='#7c3aed'){return `<div class="k" style="--c:${color}"><div>${esc(name)}</div><b>${value}</b></div>`}
+function dashboardCard(label,value,color,detail,target){
+ const action=target===null?'':` onclick="go(${target})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();go(${target})}" role="button" tabindex="0" title="Open related report"`;
+ return `<div class="k dash-card${target===null?'':' dash-click'}" style="--c:${color}"${action}><div>${esc(label)}</div><b>${esc(String(value))}</b><small>${esc(detail)}</small></div>`;
+}
+function dashboardBranchTable(rows){
+ if(!rows.length)return '<div class="empty">Koi Budget branch data nahi</div>';
+ const z=v=>v?fmt(v):'–';
+ const metric=(tab,label,value)=>`<button class="branch-metric dashboard-source" type="button" onclick="openBranchDetail(this.closest('[data-branch]').dataset.branch,'${tab}')"><small>${label}</small><b>${z(value)}</b></button>`;
+ return '<div class="branch-cards">'+rows.map(r=>{const net=r.don-r.exp;return `<article class="branch-card" data-branch="${esc(r.branch)}"><h4 class="branch-card-name" role="button" tabindex="0" title="Open complete Branch Detail" onclick="openBranchDetail(this.closest('[data-branch]').dataset.branch,'all')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBranchDetail(this.closest('[data-branch]').dataset.branch,'all')}">📍 ${esc(r.branch)}</h4><div class="branch-metrics">${metric('don','INCOME',r.don)}${metric('exp','EXPENSE',r.exp)}${metric('erp','ERP',r.erp)}${metric('dm','DM',r.dm)}${metric('und','UNDEPOSIT',r.und)}</div><div class="branch-net ${net<0?'neg':''}">Budget Surplus / Deficit <b>${fmt(net)}</b></div></article>`}).join('')+'</div>';
+}
+function renderDashboard(){
+ const usable=t=>safeRows(t).filter(r=>typeof r.branch==='string'&&r.branch.trim()&&r.branch!=='—');
+ const donation=usable('don').filter(r=>pgOf(r.src)==='b');
+ const expenses=usable('exp').filter(r=>pgOf(r.src)==='b'&&r.ledger);
+ const undRows=usable('und');
+ const erp=usable('erp'),dm=usable('dm');
+ const total=(rows,key)=>rows.reduce((n,r)=>n+(Number(r[key])||0),0);
+ const money=(has,n)=>has?fmt(n):'No Data';
+ const inc=total(donation,'amount'),ex=total(expenses,'amount'),net=inc-ex,isDeficit=net<0;
+ const hasFinancial=donation.length>0&&expenses.length>0;
+ const financial=[
+  dashboardCard('Total Income',money(donation.length,inc),'#059669','Budget income records',2),
+  dashboardCard('Total Expenses',money(expenses.length,ex),'#e11d48','Budget expense records',2),
+  dashboardCard(isDeficit?'Budget Deficit':'Available Balance',money(hasFinancial,Math.abs(net)),isDeficit?'#e11d48':'#059669',isDeficit?'Expenses income se zyada hain':'Income minus expenses (not bank balance)',2),
+  dashboardCard('ERP Total Amount',money(erp.length,total(erp,'balance')),'#0284c7','ERP source total; counted once',4),
+  dashboardCard('DM Total Amount',money(dm.length,total(dm,'balance')),'#7c3aed','DM source total; counted once',4),
+  dashboardCard('ERP + DM Total Amount',money(erp.length&&dm.length,total(erp,'balance')+total(dm,'balance')),'#059669','ERP + DM combined total (may overlap)',4)
+ ].join('');
+ const pending=[
+  dashboardCard('Undeposited Amount',money(undRows.length,total(undRows,'amount')),'#d97706','Total from uploaded Undeposit Excel only',5)
+ ].join('');
+ const incomeBranchSet=new Set(donation.map(r=>branchKey(r.branch)).filter(Boolean)),expenseBranchSet=new Set(expenses.map(r=>branchKey(r.branch)).filter(Boolean)),budgetBranchSet=new Set([...incomeBranchSet,...expenseBranchSet]),undepositBranchSet=new Set(undRows.map(r=>branchKey(r.branch)).filter(Boolean));
+ // Budget is the master list for this Branch Budget Report. Each BR code appears once; transaction rows only add amounts.
+ const totalBranches=budgetBranchSet.size,incomeBranches=incomeBranchSet.size,expenseBranches=expenseBranchSet.size,undepositBranches=undepositBranchSet.size;
+ const masterSummary=branchSummary().filter(r=>budgetBranchSet.has(branchKey(r.branch)));
+ const branch=[
+  dashboardCard('Total Branches',totalBranches?String(totalBranches):'No Data','#2563eb','One unique BR code from the Budget report',2),
+  dashboardCard('Income Branches',incomeBranches?String(incomeBranches):'No Data','#059669','Branches with Budget income',2),
+  dashboardCard('Expense Branches',expenseBranches?String(expenseBranches):'No Data','#e11d48','Branches with Budget expenses',2),
+  dashboardCard('Undeposit Branches',undepositBranches?String(undepositBranches):'No Data','#d97706','One unique BR code; receipt amounts are combined',5)
+ ].join('');
+ $('dashContent').innerHTML=`<section class="dash-group"><h3>Financial Overview</h3><div class="dash-grid dash-three">${financial}</div></section><section class="dash-group"><h3>Pending &amp; Reconciliation</h3><div class="dash-grid dash-three">${pending}</div></section><section class="dash-group"><h3>Branch Monitoring</h3><div class="dash-grid dash-three">${branch}</div></section><section class="dash-group"><h3>Branch-wise Combined Summary</h3>${dashboardBranchTable(masterSummary)}</section><p class="dash-hint">Total Branches comes only from the Budget report's unique BR codes. Repeated Income, Expense, ERP, DM and Undeposit entries are added into their single Branch row above.</p>`;
+}
+function reconciliation(){const m=new Map();for(const t of ['erp','dm'])for(const r of safeRows(t)){const key=[r.branch,r.purpose,r.cat].join('\u001f');if(!m.has(key))m.set(key,{branch:r.branch,purpose:r.purpose,cat:r.cat,erp:0,dm:0});m.get(key)[t]+=Number(r.balance)||0}return [...m.values()].sort((a,b)=>a.branch.localeCompare(b.branch)||a.purpose.localeCompare(b.purpose))}
+function renderSettings(){$('settingsContent').innerHTML=columnSettingsPanel()}
+if(CLOUD){
+  boot().catch(e=>{document.body.classList.remove('session-ready');showAuth();amsg('Cloud initialization failed: '+e.message,1)});
+}else{
+  // No unauthenticated local fallback for this multi-user financial application.
+  showAuth();
+  $('a_form').style.display='none';
+  $('a_pend').style.display='';
+  $('a_pend').innerHTML='<h3>🔒 Cloud setup required</h3><p>Firebase Web API key configure hone tak Login aur Dashboard access band hai. Is file ko direct open karne se financial data nahi dikhega.</p><p>Secure Firestore rules aur user approval bhi zaroori hain.</p>';
+}
 </script>
 </body>
 </html>
